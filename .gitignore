@@ -1,0 +1,17 @@
+# Ignorar ambiente virtual (pesado demais)
+venv/
+.venv/
+
+# Ignorar arquivos compilados do Python
+__pycache__/
+*.pyc
+
+# Ignorar variáveis de ambiente (SEGURANÇA: Contém senhas!)
+.env
+
+# Ignorar dados do Docker (Não queremos salvar o banco no Git)
+postgres_data/
+n8n_data/
+
+# Ignorar configurações locais do VS Code
+.vscode/

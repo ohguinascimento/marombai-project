@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # Serviço do Banco de Dados
+  db:
+    image: postgres:15-alpine
+    container_name: marombai_db
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123 # Vamos mudar isso em produção
+      POSTGRES_DB: marombai_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Serviço de Automação (IA)
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: marombai_n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=marombai_n8n_secure
+    volumes:
+      - n8n_data:/home/node/.n8n
+    links:
+      - db
+
+volumes:
+  postgres_data:
+  n8n_data:
