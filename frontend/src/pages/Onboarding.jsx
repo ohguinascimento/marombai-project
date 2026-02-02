@@ -5,14 +5,13 @@ export default function Onboarding() {
   const [step, setStep] = useState(1);
   const totalSteps = 5;
   
-  // Estado para armazenar todos os dados
+  // Estado completo com todos os campos
   const [formData, setFormData] = useState({
     nome: '',
     idade: '',
     genero: 'masculino',
     peso: '',
     altura: '',
-    bodyFat: '', 
     objetivo: 'hipertrofia',
     nivel: 'iniciante',
     frequencia: 3,
@@ -76,53 +75,69 @@ export default function Onboarding() {
       {/* Card Principal */}
       <div className="w-full max-w-lg bg-card-bg p-8 rounded-3xl border border-gray-800 shadow-2xl relative overflow-hidden">
         
-        {/* Passo 1: Identidade */}
+        {/* Passo 1: Identidade (Atualizado com Sexo Biológico) */}
         {step === 1 && (
           <div className="animate-fade-in space-y-6">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-gray-800/50 rounded-xl text-neon-green"><Dumbbell size={24} /></div>
-              <h2 className="text-2xl font-bold">Quem é você?</h2>
+              <h2 className="text-2xl font-bold">Sobre você</h2>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-5">
+              {/* Nome */}
               <div>
-                <label className="text-xs text-gray-500 uppercase tracking-wider">Nome</label>
+                <label className="text-xs text-gray-500 uppercase tracking-wider font-bold">Como quer ser chamado?</label>
                 <input 
                   type="text" 
                   value={formData.nome}
                   onChange={(e) => setFormData({...formData, nome: e.target.value})}
-                  className="w-full bg-dark-bg border border-gray-700 rounded-xl p-4 text-white focus:border-neon-green focus:outline-none transition-colors mt-1"
-                  placeholder="Como quer ser chamado?"
+                  className="w-full bg-dark-bg border border-gray-700 rounded-xl p-4 text-white focus:border-neon-green focus:outline-none transition-colors mt-2 placeholder-gray-600"
+                  placeholder="Seu nome ou apelido"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-gray-500 uppercase tracking-wider">Idade</label>
+
+              {/* Idade */}
+              <div>
+                  <label className="text-xs text-gray-500 uppercase tracking-wider font-bold">Idade</label>
                   <input 
                     type="number" 
                     value={formData.idade}
                     onChange={(e) => setFormData({...formData, idade: e.target.value})}
-                    className="w-full bg-dark-bg border border-gray-700 rounded-xl p-4 text-white focus:border-neon-green focus:outline-none mt-1"
+                    className="w-full bg-dark-bg border border-gray-700 rounded-xl p-4 text-white focus:border-neon-green focus:outline-none mt-2 placeholder-gray-600"
                     placeholder="Anos"
                   />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 uppercase tracking-wider">Gênero</label>
-                  <select 
-                    value={formData.genero}
-                    onChange={(e) => setFormData({...formData, genero: e.target.value})}
-                    className="w-full bg-dark-bg border border-gray-700 rounded-xl p-4 text-white focus:border-neon-green focus:outline-none mt-1 appearance-none cursor-pointer"
-                  >
-                    <option value="masculino">Masculino</option>
-                    <option value="feminino">Feminino</option>
-                  </select>
-                </div>
+              </div>
+
+              {/* Sexo Biológico (Novo Layout) */}
+              <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-gray-500 uppercase tracking-wider font-bold">Sexo Biológico</label>
+                    <span className="text-[10px] text-gray-600 bg-gray-900 px-2 py-1 rounded border border-gray-800">
+                      *Necessário para cálculo metabólico feito pela IA
+                    </span>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    {['Masculino', 'Feminino'].map((sexo) => (
+                      <button 
+                        type="button"
+                        key={sexo}
+                        onClick={() => setFormData({...formData, genero: sexo.toLowerCase()})}
+                        className={`flex-1 py-4 rounded-xl border text-sm font-bold transition-all
+                          ${formData.genero === sexo.toLowerCase()
+                            ? 'border-neon-green bg-neon-green text-black shadow-[0_0_15px_rgba(0,255,148,0.2)]'
+                            : 'border-gray-700 bg-dark-bg text-gray-400 hover:border-gray-500 hover:bg-gray-800'}`}
+                      >
+                        {sexo}
+                      </button>
+                    ))}
+                  </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Passo 2: Medidas */}
+        {/* Passo 2: Medidas (Simplificado - Sem Gordura) */}
         {step === 2 && (
           <div className="animate-fade-in space-y-6">
             <div className="flex items-center gap-3">
@@ -130,51 +145,32 @@ export default function Onboarding() {
               <h2 className="text-2xl font-bold">Suas Medidas</h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 mt-8">
               <div>
-                <label className="text-xs text-gray-500 uppercase tracking-wider">Peso (kg)</label>
+                <label className="text-xs text-gray-500 uppercase tracking-wider font-bold">Peso (kg)</label>
                 <input 
                   type="number" 
                   value={formData.peso}
                   onChange={(e) => setFormData({...formData, peso: e.target.value})}
-                  className="w-full bg-dark-bg border border-gray-700 rounded-xl p-4 text-white focus:border-neon-green focus:outline-none mt-1"
+                  className="w-full bg-dark-bg border border-gray-700 rounded-xl p-4 text-white focus:border-neon-green focus:outline-none mt-2 text-xl"
                   placeholder="0.0"
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-500 uppercase tracking-wider">Altura (cm)</label>
+                <label className="text-xs text-gray-500 uppercase tracking-wider font-bold">Altura (cm)</label>
                 <input 
                   type="number" 
                   value={formData.altura}
                   onChange={(e) => setFormData({...formData, altura: e.target.value})}
-                  className="w-full bg-dark-bg border border-gray-700 rounded-xl p-4 text-white focus:border-neon-green focus:outline-none mt-1"
+                  className="w-full bg-dark-bg border border-gray-700 rounded-xl p-4 text-white focus:border-neon-green focus:outline-none mt-2 text-xl"
                   placeholder="000"
                 />
               </div>
             </div>
-
-            {/* Estimativa Visual de Gordura */}
-            <div>
-               <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Estimativa de Gordura</label>
-               <div className="grid grid-cols-3 gap-2">
-                  {[10, 15, 20, 25, 30, 35].map((fat) => (
-                    <button 
-                      key={fat}
-                      onClick={() => setFormData({...formData, bodyFat: fat})}
-                      className={`h-20 rounded-lg border flex flex-col items-center justify-center gap-1 transition-all
-                        ${formData.bodyFat === fat 
-                          ? 'border-neon-green bg-neon-green/10 text-neon-green shadow-[inset_0_0_10px_rgba(0,255,148,0.1)]' 
-                          : 'border-gray-700 bg-dark-bg text-gray-500 hover:border-gray-500'}`}
-                    >
-                      <span className="text-sm font-bold">{fat}%</span>
-                    </button>
-                  ))}
-               </div>
-            </div>
           </div>
         )}
 
-        {/* Passo 3: Objetivo */}
+        {/* Passo 3: Objetivo (Com explicações) */}
         {step === 3 && (
           <div className="animate-fade-in space-y-6">
             <div className="flex items-center gap-3">
@@ -183,25 +179,33 @@ export default function Onboarding() {
             </div>
 
             <div className="grid grid-cols-1 gap-3">
-              {['Hipertrofia', 'Emagrecimento', 'Força Pura', 'Condicionamento'].map((obj) => (
+              {[
+                { id: 'hipertrofia', label: 'Hipertrofia', desc: 'Ganhar massa muscular e volume' },
+                { id: 'emagrecimento', label: 'Emagrecimento', desc: 'Queimar gordura e definir o corpo' },
+                { id: 'forca', label: 'Força Pura', desc: 'Aumentar as cargas máximas' },
+                { id: 'condicionamento', label: 'Condicionamento', desc: 'Melhorar resistência e saúde' }
+              ].map((obj) => (
                  <button
-                   key={obj}
-                   onClick={() => setFormData({...formData, objetivo: obj.toLowerCase()})}
-                   className={`p-4 rounded-xl border flex items-center justify-between transition-all group
-                     ${formData.objetivo === obj.toLowerCase()
+                   key={obj.id}
+                   onClick={() => setFormData({...formData, objetivo: obj.id})}
+                   className={`p-4 rounded-xl border flex items-center justify-between transition-all group text-left
+                     ${formData.objetivo === obj.id
                        ? 'border-neon-green bg-neon-green/5 shadow-[0_0_15px_rgba(0,255,148,0.1)]' 
-                       : 'border-gray-700 bg-dark-bg hover:border-gray-500'}`}
+                       : 'border-gray-700 bg-dark-bg hover:border-gray-500 hover:bg-gray-800'}`}
                  >
-                   <span className={`font-bold ${formData.objetivo === obj.toLowerCase() ? 'text-neon-green' : 'text-white'}`}>
-                     {obj}
-                   </span>
-                   {formData.objetivo === obj.toLowerCase() && <div className="w-3 h-3 bg-neon-green rounded-full shadow-[0_0_10px_#00FF94]"></div>}
+                   <div>
+                      <span className={`font-bold block ${formData.objetivo === obj.id ? 'text-neon-green' : 'text-white'}`}>
+                        {obj.label}
+                      </span>
+                      <span className="text-xs text-gray-500 mt-1">{obj.desc}</span>
+                   </div>
+                   {formData.objetivo === obj.id && <div className="w-3 h-3 bg-neon-green rounded-full shadow-[0_0_10px_#00FF94]"></div>}
                  </button>
               ))}
             </div>
 
-            <div>
-              <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Nível de Experiência</label>
+            <div className="mt-6">
+              <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block font-bold">Nível de Experiência</label>
                <div className="flex gap-2">
                   {['Iniciante', 'Intermediário', 'Avançado'].map((lvl) => (
                     <button 
@@ -210,7 +214,7 @@ export default function Onboarding() {
                       className={`flex-1 py-3 rounded-xl border text-sm font-bold transition-all
                         ${formData.nivel === lvl.toLowerCase()
                           ? 'border-neon-green bg-neon-green text-black'
-                          : 'border-gray-700 bg-dark-bg text-gray-400 hover:border-gray-500'}`}
+                          : 'border-gray-700 bg-dark-bg text-gray-400 hover:border-gray-500 hover:bg-gray-800'}`}
                     >
                       {lvl}
                     </button>
@@ -230,7 +234,7 @@ export default function Onboarding() {
             
             {/* Dias por Semana */}
             <div>
-               <label className="text-xs text-gray-500 uppercase tracking-wider mb-3 block">Dias de treino na semana: <span className="text-neon-green text-lg ml-2">{formData.frequencia}x</span></label>
+               <label className="text-xs text-gray-500 uppercase tracking-wider mb-3 block font-bold">Dias de treino na semana: <span className="text-neon-green text-lg ml-2">{formData.frequencia}x</span></label>
                <input 
                  type="range" min="1" max="7" 
                  value={formData.frequencia}
@@ -244,7 +248,7 @@ export default function Onboarding() {
 
             {/* Local */}
              <div>
-               <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Onde vai treinar?</label>
+               <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block font-bold">Onde vai treinar?</label>
                <div className="flex gap-2">
                   {['Academia', 'Em Casa', 'Ao Ar Livre'].map((loc) => (
                     <button 
@@ -253,7 +257,7 @@ export default function Onboarding() {
                       className={`flex-1 py-2 rounded-lg border text-xs font-bold transition-all
                         ${formData.local === loc.toLowerCase()
                           ? 'border-neon-green text-neon-green bg-neon-green/10'
-                          : 'border-gray-700 bg-dark-bg text-gray-500'}`}
+                          : 'border-gray-700 bg-dark-bg text-gray-500 hover:border-gray-500'}`}
                     >
                       {loc}
                     </button>
@@ -263,7 +267,7 @@ export default function Onboarding() {
 
             {/* Lesões */}
             <div>
-              <label className="text-xs text-gray-500 uppercase tracking-wider mb-3 block">Possui alguma lesão/dor?</label>
+              <label className="text-xs text-gray-500 uppercase tracking-wider mb-3 block font-bold">Possui alguma lesão/dor?</label>
               <div className="flex flex-wrap gap-2">
                  {['Ombro', 'Joelho', 'Lombar', 'Punho', 'Tornozelo', 'Quadril'].map((item) => (
                     <SelectChip key={item} field="lesoes" value={item} label={item} />
@@ -273,7 +277,7 @@ export default function Onboarding() {
           </div>
         )}
 
-        {/* Passo 5: Saúde (Final) */}
+        {/* Passo 5: Saúde (Com explicações na dieta) */}
         {step === 5 && (
           <div className="animate-fade-in space-y-6">
             <div className="flex items-center gap-3">
@@ -282,22 +286,22 @@ export default function Onboarding() {
             </div>
 
             <div>
-               <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Estilo Alimentar</label>
+               <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block font-bold">Estilo Alimentar</label>
                <select 
-                  className="w-full bg-dark-bg border border-gray-700 rounded-xl p-3 text-white focus:border-neon-green focus:outline-none cursor-pointer"
+                  className="w-full bg-dark-bg border border-gray-700 rounded-xl p-3 text-white focus:border-neon-green focus:outline-none cursor-pointer appearance-none"
                   value={formData.dieta}
                   onChange={(e) => setFormData({...formData, dieta: e.target.value})}
                >
                  <option value="onivoro">Onívoro (Come de tudo)</option>
-                 <option value="vegetariano">Vegetariano</option>
-                 <option value="vegano">Vegano</option>
-                 <option value="flexivel">Dieta Flexível</option>
-                 <option value="cetogenica">Cetogênica</option>
+                 <option value="vegetariano">Vegetariano (Sem carnes)</option>
+                 <option value="vegano">Vegano (Zero origem animal)</option>
+                 <option value="flexivel">Dieta Flexível (Foco nos macros)</option>
+                 <option value="cetogenica">Cetogênica (Baixo carboidrato)</option>
                </select>
             </div>
 
             <div>
-               <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Condições de Saúde</label>
+               <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block font-bold">Condições de Saúde</label>
                <div className="flex flex-wrap gap-2">
                   <SelectChip field="restricoes" value="diabetes" label="Diabetes" />
                   <SelectChip field="restricoes" value="hipertensao" label="Hipertensão" />
@@ -307,7 +311,7 @@ export default function Onboarding() {
             </div>
 
              <div>
-               <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Suplementos</label>
+               <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block font-bold">Suplementos</label>
                <div className="flex flex-wrap gap-2">
                   <SelectChip field="suplementos" value="whey" label="Whey" />
                   <SelectChip field="suplementos" value="creatina" label="Creatina" />
