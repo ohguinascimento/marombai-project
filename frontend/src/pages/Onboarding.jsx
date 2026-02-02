@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { ChevronRight, ChevronLeft, Dumbbell, Activity, Apple, Scale, Calendar } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // <--- Adicione 
 
 export default function Onboarding() {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const totalSteps = 5;
   
@@ -37,9 +39,36 @@ export default function Onboarding() {
   const nextStep = () => { if (step < totalSteps) setStep(step + 1); };
   const prevStep = () => { if (step > 1) setStep(step - 1); };
 
-  const handleFinish = () => {
-    console.log("Dados prontos para envio:", formData);
-    alert("Sucesso! Dados coletados (veja no Console F12). Próximo passo: Backend!");
+const handleFinish = async () => {
+    // 1. Feedback visual (poderíamos colocar um loading aqui)
+    console.log("Enviando dados para o Python...", formData);
+
+    try {
+      // 2. A Mágica do Fetch
+      const response = await fetch('http://127.0.0.1:8000/gerar-treino', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      // 3. Verifica se deu certo
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Resposta do Python:", data);
+        
+        // Se deu certo, vai pro Dashboard
+        alert(`Sucesso! O Python respondeu: ${data.mensagem}`);
+        navigate('/dashboard');
+      } else {
+        alert("Erro ao conectar com o servidor. O Python está rodando?");
+      }
+
+    } catch (error) {
+      console.error("Erro de conexão:", error);
+      alert("Erro fatal de conexão. Verifique se o terminal do Backend está aberto.");
+    }
   };
 
   // Componente visual de Botão Pequeno (Chip)
