@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { ChevronRight, ChevronLeft, Dumbbell, Activity, Apple, Scale, Calendar } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // <--- Adicione 
+import { ChevronRight, ChevronLeft, Dumbbell, Activity, Apple, Scale, Calendar, Brain } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Onboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
   const totalSteps = 5;
   
   // Estado completo com todos os campos
@@ -39,12 +40,11 @@ export default function Onboarding() {
   const nextStep = () => { if (step < totalSteps) setStep(step + 1); };
   const prevStep = () => { if (step > 1) setStep(step - 1); };
 
-const handleFinish = async () => {
-    // 1. Feedback visual (poderíamos colocar um loading aqui)
+  const handleFinish = async () => {
+    setIsLoading(true);
     console.log("Enviando dados para o Python...", formData);
 
     try {
-      // 2. A Mágica do Fetch
       const response = await fetch('http://127.0.0.1:8000/gerar-treino', {
         method: 'POST',
         headers: {
@@ -53,21 +53,22 @@ const handleFinish = async () => {
         body: JSON.stringify(formData),
       });
 
-      // 3. Verifica se deu certo
-      if (response.ok) {
-        const data = await response.json();
+      const data = await response.json();
+
+      if (response.ok && data.status === 'sucesso') {
         console.log("Resposta do Python:", data);
         
-        // Se deu certo, vai pro Dashboard
-        alert(`Sucesso! O Python respondeu: ${data.mensagem}`);
-        navigate('/dashboard');
+        // Navegar LEVANDO os dados
+        navigate('/dashboard', { state: { treinoData: data.treino } });
       } else {
-        alert("Erro ao conectar com o servidor. O Python está rodando?");
+        alert("Erro no servidor: " + (data.mensagem || "Desconhecido"));
       }
 
     } catch (error) {
       console.error("Erro de conexão:", error);
       alert("Erro fatal de conexão. Verifique se o terminal do Backend está aberto.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -85,8 +86,22 @@ const handleFinish = async () => {
   );
 
   return (
-    <div className="min-h-screen bg-dark-bg text-white flex flex-col items-center justify-center p-6 font-sans">
+    <div className="min-h-screen bg-dark-bg text-white flex flex-col items-center justify-center p-6 font-sans relative">
       
+      {/* --- TELA DE LOADING (OVERLAY) --- */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center animate-fade-in">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-neon-green mb-6 shadow-[0_0_30px_#00FF94]"></div>
+          <h2 className="text-2xl font-bold text-white animate-pulse">
+            Montando seu Treino...
+          </h2>
+          <div className="flex items-center gap-2 mt-4 text-gray-400">
+             <Brain size={18} className="text-purple-500" />
+             <p>A IA está analisando sua biomecânica 🧬</p>
+          </div>
+        </div>
+      )}
+
       {/* Barra de Progresso */}
       <div className="w-full max-w-lg mb-8">
         <div className="flex justify-between text-xs text-gray-500 mb-2 font-bold tracking-wider">
@@ -104,7 +119,7 @@ const handleFinish = async () => {
       {/* Card Principal */}
       <div className="w-full max-w-lg bg-card-bg p-8 rounded-3xl border border-gray-800 shadow-2xl relative overflow-hidden">
         
-        {/* Passo 1: Identidade (Atualizado com Sexo Biológico) */}
+        {/* Passo 1: Identidade */}
         {step === 1 && (
           <div className="animate-fade-in space-y-6">
             <div className="flex items-center gap-3">
@@ -137,12 +152,12 @@ const handleFinish = async () => {
                   />
               </div>
 
-              {/* Sexo Biológico (Novo Layout) */}
+              {/* Sexo Biológico */}
               <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="text-xs text-gray-500 uppercase tracking-wider font-bold">Sexo Biológico</label>
                     <span className="text-[10px] text-gray-600 bg-gray-900 px-2 py-1 rounded border border-gray-800">
-                      *Necessário para cálculo metabólico feito pela IA
+                      *Cálculo metabólico IA
                     </span>
                   </div>
                   
@@ -166,7 +181,7 @@ const handleFinish = async () => {
           </div>
         )}
 
-        {/* Passo 2: Medidas (Simplificado - Sem Gordura) */}
+        {/* Passo 2: Medidas */}
         {step === 2 && (
           <div className="animate-fade-in space-y-6">
             <div className="flex items-center gap-3">
@@ -199,7 +214,7 @@ const handleFinish = async () => {
           </div>
         )}
 
-        {/* Passo 3: Objetivo (Com explicações) */}
+        {/* Passo 3: Objetivo */}
         {step === 3 && (
           <div className="animate-fade-in space-y-6">
             <div className="flex items-center gap-3">
@@ -306,7 +321,7 @@ const handleFinish = async () => {
           </div>
         )}
 
-        {/* Passo 5: Saúde (Com explicações na dieta) */}
+        {/* Passo 5: Saúde */}
         {step === 5 && (
           <div className="animate-fade-in space-y-6">
             <div className="flex items-center gap-3">
@@ -362,7 +377,8 @@ const handleFinish = async () => {
           
           <button 
             onClick={step === totalSteps ? handleFinish : nextStep}
-            className="bg-neon-green text-black font-bold py-3 px-8 rounded-xl flex items-center gap-2 hover:opacity-90 transition-all shadow-[0_0_15px_rgba(0,255,148,0.3)] hover:shadow-[0_0_25px_rgba(0,255,148,0.5)] transform hover:-translate-y-1"
+            disabled={isLoading}
+            className="bg-neon-green text-black font-bold py-3 px-8 rounded-xl flex items-center gap-2 hover:opacity-90 transition-all shadow-[0_0_15px_rgba(0,255,148,0.3)] hover:shadow-[0_0_25px_rgba(0,255,148,0.5)] transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {step === totalSteps ? 'Gerar Meu Plano' : 'Continuar'} <ChevronRight size={20} />
           </button>

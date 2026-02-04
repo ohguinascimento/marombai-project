@@ -1,27 +1,18 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-import os
-from dotenv import load_dotenv
+from sqlmodel import SQLModel, create_engine, Session
 
-# Carrega as variáveis do arquivo .env
-load_dotenv()
+# String de Conexão (Conversando com o Docker)
+# usuario:senha@localhost:porta/nome_do_banco
+# Atualize com as credenciais novas que você colocou no Docker
+DATABASE_URL = "postgresql://admin:password123@127.0.0.1:5432/marombai_db"
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+# O motor que faz a conexão real
+engine = create_engine(DATABASE_URL, echo=True) # echo=True mostra o SQL no terminal (bom para debug)
 
-# Cria a conexão com o motor do banco (Engine)
-engine = create_engine(DATABASE_URL)
+# Função para criar as tabelas no banco
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
 
-# Cria uma "fábrica" de sessões de banco de dados
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Classe base para criar os modelos (tabelas)
-Base = declarative_base()
-
-# Função para pegar o banco de dados (Dependency Injection)
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# Dependência para pegar a sessão do banco (usada nas rotas)
+def get_session():
+    with Session(engine) as session:
+        yield session

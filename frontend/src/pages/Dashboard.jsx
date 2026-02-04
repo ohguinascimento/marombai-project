@@ -1,44 +1,33 @@
 import React from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Play, Clock, Zap, Star, MoreHorizontal, 
   Home, Calendar, Activity, Utensils, User, 
   Brain, RefreshCw 
 } from 'lucide-react';
 
-export default function Dashboard() {
-  
-  // Dados simulados (No futuro virão do Python)
-  const treinoDoDia = {
-    titulo: "Peito & Tríceps",
-    foco: "Hipertrofia",
-    duracao: "50 min",
-    intensidade: "Alta",
-    xp: 350,
-    aiInsight: "Baseado na sua recuperação lenta de ontem, foquei em Carga e reduzi as repetições hoje.",
-    exercicios: [
-      {
-        id: 1,
-        nome: "Supino Inclinado",
-        series: "4x10-12",
-        carga: "40kg",
-        img: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&q=80" // Foto ilustrativa
-      },
-      {
-        id: 2,
-        nome: "Crucifixo com Halteres",
-        series: "3x12-15",
-        carga: "16kg",
-        img: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=400&q=80"
-      },
-      {
-        id: 3,
-        nome: "Tríceps Corda",
-        series: "4x12-15",
-        carga: "25kg",
-        img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&q=80"
-      }
-    ]
-  };
+export default function Dashboard({ data }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Tenta pegar os dados vindo da Rota (state) OU vindo via props
+  // Se não vier de lugar nenhum, fica null
+  const treino = location.state?.treinoData || data || null;
+
+  // Se não tiver treino nenhum (usuário tentou acessar /dashboard direto), manda voltar
+  if (!treino) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-dark-bg text-white gap-4">
+        <p className="text-gray-400">Nenhum treino encontrado.</p>
+        <button 
+          onClick={() => navigate('/')} 
+          className="text-neon-green hover:underline font-bold"
+        >
+          Voltar para o início
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-dark-bg text-white pb-24 font-sans">
@@ -50,8 +39,8 @@ export default function Dashboard() {
             <img src="https://github.com/shadcn.png" alt="Avatar" />
           </div>
           <div>
-            <h1 className="font-bold text-lg">Olá, Bruno 👋</h1>
-            <p className="text-xs text-gray-400">Vamos esmagar hoje?</p>
+            <h1 className="font-bold text-lg">Olá, Maromba 👋</h1>
+            <p className="text-xs text-gray-400">Hora do show!</p>
           </div>
         </div>
         <button className="p-2 bg-gray-800 rounded-full text-gray-400">
@@ -69,8 +58,8 @@ export default function Dashboard() {
             <Brain size={18} />
             <span className="text-xs font-bold tracking-wider uppercase">Análise da IA</span>
           </div>
-          <p className="text-sm text-gray-300 leading-relaxed">
-            "{treinoDoDia.aiInsight}"
+          <p className="text-sm text-gray-300 leading-relaxed italic">
+            "{treino.aiInsight}"
           </p>
         </div>
 
@@ -78,9 +67,9 @@ export default function Dashboard() {
         <div>
           <div className="flex justify-between items-end mb-4">
             <div>
-              <h2 className="text-3xl font-bold text-white mb-1">{treinoDoDia.titulo}</h2>
+              <h2 className="text-3xl font-bold text-white mb-1 leading-tight">{treino.titulo}</h2>
               <span className="text-neon-green text-sm font-medium bg-neon-green/10 px-3 py-1 rounded-full">
-                {treinoDoDia.foco}
+                {treino.foco}
               </span>
             </div>
             <button className="text-xs text-gray-500 underline">Personalizar</button>
@@ -89,13 +78,13 @@ export default function Dashboard() {
           {/* Stats Row */}
           <div className="flex gap-3 mb-6">
             <div className="flex items-center gap-2 px-3 py-2 bg-gray-900 rounded-lg border border-gray-800 text-xs text-gray-400">
-              <Clock size={14} className="text-neon-green" /> {treinoDoDia.duracao}
+              <Clock size={14} className="text-neon-green" /> {treino.duracao}
             </div>
             <div className="flex items-center gap-2 px-3 py-2 bg-gray-900 rounded-lg border border-gray-800 text-xs text-gray-400">
-              <Zap size={14} className="text-yellow-500" /> {treinoDoDia.intensidade}
+              <Zap size={14} className="text-yellow-500" /> {treino.intensidade}
             </div>
             <div className="flex items-center gap-2 px-3 py-2 bg-gray-900 rounded-lg border border-gray-800 text-xs text-gray-400">
-              <Star size={14} className="text-purple-500" /> {treinoDoDia.xp} XP
+              <Star size={14} className="text-purple-500" /> {treino.xp} XP
             </div>
           </div>
         </div>
@@ -103,15 +92,20 @@ export default function Dashboard() {
         {/* Lista de Exercícios */}
         <div className="space-y-4">
           <div className="flex justify-between items-center text-xs text-gray-500 uppercase tracking-wider font-bold">
-            <span>Exercícios</span>
-            <span className="flex items-center gap-1"><RefreshCw size={12}/> Trocas: 3/3</span>
+            <span>Exercícios ({treino.exercicios?.length || 0})</span>
+            <span className="flex items-center gap-1"><RefreshCw size={12}/> Trocas disponíveis</span>
           </div>
 
-          {treinoDoDia.exercicios.map((ex) => (
+          {treino.exercicios && treino.exercicios.map((ex) => (
             <div key={ex.id} className="bg-card-bg rounded-xl p-4 flex gap-4 border border-gray-800 hover:border-gray-600 transition-colors cursor-pointer group">
               {/* Imagem do Exercicio */}
               <div className="w-20 h-20 rounded-lg bg-gray-800 overflow-hidden flex-shrink-0 relative">
-                <img src={ex.img} alt={ex.nome} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                {/* Fallback de imagem caso a API mande vazio */}
+                <img 
+                  src={ex.img || "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&q=80"} 
+                  alt={ex.nome} 
+                  className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" 
+                />
                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                   <Play size={20} className="text-white drop-shadow-lg" fill="white" />
                 </div>
@@ -123,7 +117,7 @@ export default function Dashboard() {
                 <div className="flex gap-3 text-sm">
                   <span className="text-neon-green font-mono">{ex.series}</span>
                   <span className="text-gray-500">|</span>
-                  <span className="text-gray-400">Carga: {ex.carga}</span>
+                  <span className="text-gray-400">{ex.carga}</span>
                 </div>
               </div>
 

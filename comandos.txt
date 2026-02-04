@@ -1,0 +1,15 @@
+Checklist de Inicialização
+
+    Infraestrutura (Docker): Abra o terminal na raiz (C:\marombai-project) e rode:
+    
+    docker-compose up -d
+
+    Cérebro (Backend Python): No mesmo terminal (garanta que o (.venv) está ativo):
+    
+    uvicorn backend.main:app --reload
+
+    Rosto (Frontend React): Abra outro terminal, entre na pasta frontend e rode:
+    
+    npm run dev
+
+    Automação (n8n): Abra http://localhost:5678 no navegador.

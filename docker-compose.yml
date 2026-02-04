@@ -13,7 +13,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_v2:/var/lib/postgresql/data
 
   # Serviço de Automação (IA)
   n8n:
@@ -32,5 +32,5 @@ services:
       - db
 
 volumes:
-  postgres_data:
   n8n_data:
+  postgres_data_v2:
