@@ -21,7 +21,7 @@ Checklist de Inicialização
    
     ATIVIDADES 17-02-2026
         
-1 - corrigir o banco de dados para que as informações sejam salvas
+1 - corrigir o banco de dados para que as informações sejam salvas - ok
 
 2 - subir a aplicação em "alpha" no servidor, para trabalharmos com ela online
 

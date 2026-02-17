@@ -1,21 +1,47 @@
 version: '3.8'
 
 services:
-  # Serviço do Banco de Dados
+  # --- BANCO DE DADOS ---
   db:
     image: postgres:15-alpine
     container_name: marombai_db
     restart: always
     environment:
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password123 # Vamos mudar isso em produção
+      POSTGRES_PASSWORD: password123
       POSTGRES_DB: marombai_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data_v2:/var/lib/postgresql/data
 
-  # Serviço de Automação (IA)
+  # --- BACKEND (PYTHON) ---
+  backend:
+    build: ./backend  # Procura o Dockerfile na pasta backend
+    container_name: marombai_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - n8n
+    environment:
+      # URL interna do Docker para o n8n
+      WEBHOOK_URL: "http://n8n:5678/webhook/gerar-treino"
+      # URL interna do Docker para o banco
+      DATABASE_URL: "postgresql://admin:password123@db:5432/marombai_db"
+
+  # --- FRONTEND (REACT) ---
+  frontend:
+    build: ./frontend # Procura o Dockerfile na pasta frontend
+    container_name: marombai_frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+  # --- INTELIGÊNCIA (n8n) ---
   n8n:
     image: docker.n8n.io/n8nio/n8n
     container_name: marombai_n8n

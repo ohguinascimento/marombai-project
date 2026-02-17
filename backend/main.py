@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from contextlib import asynccontextmanager
 from typing import List, Optional
 from pydantic import BaseModel
+import os
 
 # --- ARQUIVOS LOCAIS ---
 # O segredo é adicionar o "backend." antes do nome do arquivo
@@ -96,7 +97,8 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
     # ---------------------------------------------------------
     # PASSO 2: Chamar a Inteligência (n8n)
     # ---------------------------------------------------------
-    webhook_url = "http://localhost:5678/webhook/gerar-treino" # URL interna do Docker
+    #webhook_url = "http://localhost:5678/webhook/gerar-treino" # URL interna do Docker (antiga para teste local)
+    webhook_url = os.getenv("WEBHOOK_URL", "http://localhost:5678/webhook/gerar-treino")
     
     payload = {
         "nome": novo_usuario.nome,
