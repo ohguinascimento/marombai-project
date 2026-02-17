@@ -1,4 +1,7 @@
 Checklist de Inicialização
+    Venv 
+    Estando na pasta raiz do projeto:
+    .\.venv\Scripts\Activate
 
     Infraestrutura (Docker): Abra o terminal na raiz (C:\marombai-project) e rode:
     
@@ -13,3 +16,13 @@ Checklist de Inicialização
     npm run dev
 
     Automação (n8n): Abra http://localhost:5678 no navegador.
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   
+    ATIVIDADES 17-02-2026
+        
+1 - corrigir o banco de dados para que as informações sejam salvas
+
+2 - subir a aplicação em "alpha" no servidor, para trabalharmos com ela online
+
+3 - criar um arquivo "rag" para que qualquer conversa com IA possa me auxiliar com o projeto, tendo a estrutura técnica dele para qualquer pergunta e que minha equipe consegue manter o suporte 

@@ -1,18 +1,31 @@
-# Ignorar ambiente virtual (pesado demais)
+# --- PYTHON & BACKEND ---
 venv/
 .venv/
-
-# Ignorar arquivos compilados do Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# Ignorar variáveis de ambiente (SEGURANÇA: Contém senhas!)
-.env
+# --- FRONTEND (REACT/NODE) - ESSENCIAL ---
+node_modules/
+dist/
+build/
+.npm
+.eslintcache
 
-# Ignorar dados do Docker (Não queremos salvar o banco no Git)
+# --- DADOS & BANCO (DOCKER) ---
+# Protegendo seus dados reais de subirem pro GitHub
 postgres_data/
+postgres_data_v2/
 n8n_data/
+*.sqlite
+*.db
 
-# Ignorar configurações locais do VS Code
+# --- SEGURANÇA & AMBIENTE ---
+.env
+.env.local
+.DS_Store
+
+# --- IDEs ---
 .vscode/
-
+.idea/
