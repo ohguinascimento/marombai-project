@@ -43,7 +43,8 @@ services:
       - db
       - n8n
     environment:
-      WEBHOOK_URL: "http://n8n:5678/webhook/gerar-treino"
+      WEBHOOK_URL: "http://n8n:5678/webhook-test/gerar-treino"
+      WEBHOOK_URL_DIETA: "http://n8n:5678/webhook/gerar-dieta"
       DATABASE_URL: "postgresql://admin:password123@db:5432/marombai_db"
 
   # --- FRONTEND (REACT) ---

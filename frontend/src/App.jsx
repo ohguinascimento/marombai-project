@@ -9,7 +9,7 @@ import Login from './pages/Login';
 
 function App() {
   // DEBUG: Se isso não aparecer no console (F12), o código não atualizou!
-  console.log("🚀 App.jsx atualizado! Rotas registradas: /dieta, /dietas, /treinos, /admin, /dashboard");
+  console.log("🚀 App.jsx atualizado! Rotas registradas: /login, /dieta, /dietas, /treinos, /admin, /dashboard");
 
   return (
     <BrowserRouter>
