@@ -1,18 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Play, Clock, Zap, Star, MoreHorizontal, 
   Home, Calendar, Activity, Utensils, User, 
   Brain, RefreshCw 
 } from 'lucide-react';
+import { Coffee } from 'lucide-react';
 
 export default function Dashboard({ data }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isDietLoading, setIsDietLoading] = useState(false);
 
-  // Tenta pegar os dados vindo da Rota (state) OU vindo via props
-  // Se não vier de lugar nenhum, fica null
-  const treino = location.state?.treinoData || data || null;
+  const treino = location.state?.treinoData;
+  const userId = location.state?.userId;
+  const userProfile = location.state?.userProfile;
   
   // --- DEBUG: Ver o que chegou ---
   console.log("📊 DADOS NO DASHBOARD:", treino);
@@ -32,9 +34,54 @@ export default function Dashboard({ data }) {
     );
   }
 
+  const handleGenerateDiet = async () => {
+    if (!userId || !userProfile) {
+      alert("Dados do usuário não encontrados para gerar a dieta.");
+      return;
+    }
+    setIsDietLoading(true);
+
+    const dietPayload = {
+      user_id: userId,
+      objetivo: userProfile.objetivo,
+      restricoes: userProfile.restricoes,
+      preferencias: [], // Pode adicionar no futuro
+      dieta: userProfile.dieta,
+      suplementos: userProfile.suplementos,
+    };
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/gerar-dieta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dietPayload),
+      });
+
+      const dietData = await response.json();
+
+      if (response.ok) {
+        navigate('/dieta', { state: { dietData: dietData.dieta } });
+      } else {
+        throw new Error(dietData.detail || "Falha ao gerar dieta.");
+      }
+    } catch (error) {
+      console.error("Erro ao gerar dieta:", error);
+      alert(`Erro: ${error.message}`);
+    } finally {
+      setIsDietLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-dark-bg text-white pb-24 font-sans">
       
+      {isDietLoading && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center animate-fade-in">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-400 mb-6"></div>
+          <h2 className="text-2xl font-bold text-white animate-pulse">Montando sua Dieta...</h2>
+        </div>
+      )}
+
       {/* Topo / Header */}
       <header className="p-6 flex justify-between items-center bg-gradient-to-b from-black/50 to-transparent sticky top-0 z-10 backdrop-blur-sm">
         <div className="flex items-center gap-3">
@@ -158,7 +205,11 @@ export default function Dashboard({ data }) {
             <span className="text-[10px] font-medium">Evolução</span>
           </button>
 
-          <button className="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+          <button 
+            onClick={handleGenerateDiet}
+            disabled={isDietLoading}
+            className="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors disabled:opacity-50"
+          >
             <Utensils size={20} />
             <span className="text-[10px] font-medium">Dieta</span>
           </button>

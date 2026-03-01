@@ -4,10 +4,11 @@ import Dashboard from './pages/Dashboard'; // <--- Importe aqui
 import AdminUsers from './pages/AdminUsers'; // <--- ADICIONE ESTA LINHA
 import AdminWorkouts from './pages/AdminWorkouts'; // <--- IMPORTAR A NOVA PÁGINA
 import AdminDiets from './pages/AdminDiets';
+import DietPage from './pages/DietPage';
 
 function App() {
   // DEBUG: Se isso não aparecer no console (F12), o código não atualizou!
-  console.log("🚀 App.jsx atualizado! Rotas registradas: /dietas, /treinos, /admin, /dashboard");
+  console.log("🚀 App.jsx atualizado! Rotas registradas: /dieta, /dietas, /treinos, /admin, /dashboard");
 
   return (
     <BrowserRouter>
@@ -17,6 +18,7 @@ function App() {
         <Route path="/admin" element={<AdminUsers />} /> {/* <--- ADICIONE ESTA LINHA */}
         <Route path="/treinos" element={<AdminWorkouts />} /> {/* <--- NOVA ROTA */}
         <Route path="/dietas" element={<AdminDiets />} />
+        <Route path="/dieta" element={<DietPage />} />
         
         {/* Rota Coringa (*) para capturar páginas não encontradas */}
         <Route path="*" element={

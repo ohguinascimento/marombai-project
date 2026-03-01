@@ -78,7 +78,7 @@ export default function Onboarding() {
         console.log("✅ Sucesso! Resposta:", data);
 
         // Navega para o Dashboard levando o treino
-        navigate('/dashboard', { state: { treinoData: data.treino } });
+        navigate('/dashboard', { state: { treinoData: data.treino, userId: data.user_id, userProfile: payload } });
       } else {
         console.error("❌ Erro no Backend:", data);
         // Mostra o erro exato que o Python devolveu (ajuda muito no debug)

@@ -1,0 +1,123 @@
+{
+  "name": "MarombAI - Gerador de Dieta",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gerar-dieta",
+        "authentication": "basicAuth",
+        "options": {}
+      },
+      "id": "webhook-node-dieta",
+      "name": "Webhook (Recebe Dados Dieta)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        460,
+        600
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "MarombAI Backend Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+        "authentication": "none",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "COLE_SUA_API_KEY_AQUI"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contents",
+              "value": "={{ [{'parts': [{'text': 'Você é o MarombAI, um nutricionista esportivo de elite. Crie um plano alimentar para: \\nNome: ' + $json.body.user.nome + '\\nPeso: ' + $json.body.user.peso + 'kg\\nObjetivo: ' + $json.body.perfil_dieta.objetivo + '\\nEstilo Alimentar: ' + $json.body.perfil_dieta.dieta + '\\nRestrições: ' + ($json.body.perfil_dieta.restricoes.length > 0 ? $json.body.perfil_dieta.restricoes.join(', ') : 'Nenhuma') + '\\n\\nREGRAS OBRIGATÓRIAS:\\n1. Retorne APENAS um JSON válido. Não use markdown (```json). Apenas o objeto cru.\\n2. O campo \"titulo\" deve ser criativo e motivador.\\n3. O campo \"kcal\" deve ser um número inteiro estimado para o objetivo.\\n4. A estrutura do JSON deve ser exatamente esta:\\n{\\n  \"titulo\": \"Nome Criativo da Dieta\",\\n  \"objetivo\": \"Hipertrofia/Emagrecimento\",\\n  \"kcal\": 2500,\\n  \"refeicoes\": [\\n    {\\n      \"nome\": \"Café da Manhã\",\\n      \"itens\": [\"Item 1 (ex: 3 ovos mexidos)\", \"Item 2 (ex: 1 fatia de pão integral)\"]\\n    },\\n    {\\n      \"nome\": \"Almoço\",\\n      \"itens\": [\"Item 1\", \"Item 2\"]\\n    }\\n  ]\\n}' }]}] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-node-dieta",
+      "name": "HTTP Request (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        680,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst json = item.json;\n\nlet text = \"\";\n\n// 1. Tenta extrair o texto da resposta da IA\nif (json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) {\n  text = json.candidates[0].content.parts[0].text;\n} else {\n  return { \n    dieta: null, \n    debug_error: \"O Google respondeu, mas a estrutura não contém 'candidates'.\", \n    resposta_bruta: json \n  };\n}\n\n// 2. Limpeza robusta para extrair apenas o bloco JSON\nconst jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\nlet jsonString = \"\";\n\nif (jsonMatch) {\n  jsonString = jsonMatch[0];\n} else {\n  return { \n    dieta: null, \n    debug_error: \"A IA gerou texto, mas não encontrei um bloco JSON válido (sem chaves {}).\", \n    texto_gerado: text \n  };\n}\n\n// 3. Tenta converter o texto limpo para um objeto\ntry {\n  const dietaObj = JSON.parse(jsonString);\n  \n  // Sucesso! Envolve o objeto na chave 'dieta' que o backend espera.\n  return {\n    dieta: dietaObj\n  };\n} catch (e) {\n  return { \n    dieta: null, \n    debug_error: \"Falha no JSON.parse. O texto da IA provavelmente tem um erro de sintaxe.\", \n    texto_problematico: jsonString \n  };\n}"
+      },
+      "id": "parser-node-dieta",
+      "name": "Formatador JSON Dieta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "response-node-dieta",
+      "name": "Responder ao Backend",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Recebe Dados Dieta)": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Formatador JSON Dieta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatador JSON Dieta": {
+      "main": [
+        [
+          {
+            "node": "Responder ao Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

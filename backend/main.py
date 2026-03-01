@@ -129,7 +129,9 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
     # PASSO 2: Chamar a Inteligência (n8n)
     # ---------------------------------------------------------
     #webhook_url = "http://localhost:5678/webhook/gerar-treino" # URL interna do Docker (antiga para teste local)
-    webhook_url = os.getenv("WEBHOOK_URL", "http://localhost:5678/webhook-test/gerar-treino")
+    # CORREÇÃO: Usar o nome do serviço 'n8n' em vez de 'localhost' para comunicação entre containers.
+    # O caminho do webhook também foi corrigido para corresponder ao workflow.
+    webhook_url = os.getenv("WEBHOOK_URL", "http://n8n:5678/webhook/gerar-treino")
     
     payload = {
         "nome": novo_usuario.nome,
@@ -236,23 +238,50 @@ async def gerar_dieta(dados: DietRequest, session: Session = Depends(get_session
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-    # 2. Mock de geração de dieta (substituir por IA/n8n depois)
-    dieta_gerada = {
-        "refeicoes": [
-            {"nome": "Café da manhã", "itens": ["Ovos mexidos", "Aveia", "Banana"]},
-            {"nome": "Almoço", "itens": ["Arroz integral", "Frango grelhado", "Salada"]},
-            {"nome": "Jantar", "itens": ["Peixe", "Batata doce", "Brócolis"]}
-        ],
-        "objetivo": dados.objetivo,
-        "restricoes": dados.restricoes,
-        "preferencias": dados.preferencias,
-        "dieta": dados.dieta,
-        "suplementos": dados.suplementos
+    # 2. Chamar a IA para gerar a dieta via n8n
+    # CORREÇÃO: Usar o nome do serviço 'n8n' em vez de 'localhost'.
+    webhook_url_dieta = os.getenv("WEBHOOK_URL_DIETA", "http://n8n:5678/webhook/gerar-dieta")
+    
+    # CORREÇÃO: Converter datetime para string para evitar erro de serialização JSON
+    user_data = usuario.dict()
+    if user_data.get("created_at"):
+        user_data["created_at"] = str(user_data["created_at"])
+
+    payload_dieta = {
+        "user": user_data,
+        "perfil_dieta": dados.dict()
     }
+
+    print("📡 Enviando para o n8n (Dieta)...")
+    dieta_gerada = None
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                webhook_url_dieta, 
+                json=payload_dieta, 
+                timeout=60.0,
+                auth=("admin", "marombai_n8n_secure") 
+            )
+            
+            if response.status_code != 200:
+                print(f"❌ Erro n8n (Dieta): {response.status_code} - {response.text}")
+                raise HTTPException(status_code=500, detail=f"Erro n8n: {response.text}")
+            
+            dados_n8n_dieta = response.json()
+            dieta_gerada = dados_n8n_dieta.get("dieta")
+
+            if isinstance(dieta_gerada, str):
+                dieta_gerada = json.loads(dieta_gerada.replace("```json", "").replace("```", "").strip())
+
+        except Exception as e:
+            print(f"❌ Erro de conexão com n8n (Dieta): {e}")
+            raise HTTPException(status_code=500, detail=f"Erro de conexão com a IA: {e}")
+
+    if not dieta_gerada:
+        raise HTTPException(status_code=502, detail="A IA de dietas retornou uma resposta inválida.")
 
     # 3. Salvar dieta no banco
     from datetime import datetime
-    import json
     nova_dieta = DietPlan(
         titulo=f"Dieta para {usuario.nome}",
         objetivo=dados.objetivo,
