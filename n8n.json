@@ -1,0 +1,123 @@
+{
+  "name": "MarombAI - HTTP Fallback",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gerar-treino",
+        "authentication": "basicAuth",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook (Recebe Dados)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        460,
+        340
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "MarombAI Backend Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+        "authentication": "none",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "COLE_SUA_API_KEY_AQUI"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contents",
+              "value": "={{ [{'parts': [{'text': 'Você é o MarombAI, personal trainer. Crie um treino JSON para: ' + $json.body.nome + '\\nIdade: ' + $json.body.perfil.idade + '\\nObjetivo: ' + $json.body.perfil.objetivo + '\\n\\nREGRAS:\\n1. Retorne APENAS JSON válido.\\n2. Estrutura: { \"titulo\": \"...\", \"foco\": \"...\", \"exercicios\": [...] }' }]}] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-node",
+      "name": "HTTP Request (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        680,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Adaptado para resposta HTTP direta do Google\nconst googleResp = $input.first().json;\n\n// Proteção contra erros da API\nif (!googleResp.candidates || !googleResp.candidates[0]) {\n  return { erro: \"Erro na API do Google\", raw: googleResp };\n}\n\nconst text = googleResp.candidates[0].content.parts[0].text;\n\n// Limpeza do Markdown (remove ```json e ```)\nconst jsonString = text.replace(/```json|```/g, '').trim();\n\nlet treinoObj;\ntry {\n  treinoObj = JSON.parse(jsonString);\n} catch (e) {\n  treinoObj = { erro: \"Falha ao gerar JSON\", raw: text };\n}\n\nreturn {\n  treino: treinoObj\n};"
+      },
+      "id": "parser-node",
+      "name": "Formatador JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "response-node",
+      "name": "Responder ao Backend",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        340
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Recebe Dados)": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Formatador JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatador JSON": {
+      "main": [
+        [
+          {
+            "node": "Responder ao Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

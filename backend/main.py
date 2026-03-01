@@ -1,3 +1,62 @@
+# --- Modelos de Entrada para Dieta ---
+class DietRequest(BaseModel):
+    user_id: int
+    objetivo: str
+    restricoes: list = []
+    preferencias: list = []
+    dieta: str = "onivoro"
+    suplementos: list = []
+
+# --- Endpoint para gerar dieta personalizada ---
+@app.post("/gerar-dieta")
+async def gerar_dieta(dados: DietRequest, session: Session = Depends(get_session)):
+    """
+    1. Recebe dados do Front
+    2. Busca usuário
+    3. Gera dieta personalizada (mock/IA)
+    4. Salva dieta no banco
+    5. Retorna dieta
+    """
+    # 1. Buscar usuário
+    usuario = session.get(User, dados.user_id)
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    # 2. Mock de geração de dieta (substituir por IA/n8n depois)
+    dieta_gerada = {
+        "refeicoes": [
+            {"nome": "Café da manhã", "itens": ["Ovos mexidos", "Aveia", "Banana"]},
+            {"nome": "Almoço", "itens": ["Arroz integral", "Frango grelhado", "Salada"]},
+            {"nome": "Jantar", "itens": ["Peixe", "Batata doce", "Brócolis"]}
+        ],
+        "objetivo": dados.objetivo,
+        "restricoes": dados.restricoes,
+        "preferencias": dados.preferencias,
+        "dieta": dados.dieta,
+        "suplementos": dados.suplementos
+    }
+
+    # 3. Salvar dieta no banco
+    from datetime import datetime
+    import json
+    nova_dieta = DietPlan(
+        titulo=f"Dieta para {usuario.nome}",
+        objetivo=dados.objetivo,
+        restricoes=json.dumps(dados.restricoes),
+        dieta_json=json.dumps(dieta_gerada),
+        user_id=usuario.id,
+        created_at=datetime.utcnow()
+    )
+    session.add(nova_dieta)
+    session.commit()
+    session.refresh(nova_dieta)
+
+    return {
+        "status": "sucesso",
+        "mensagem": "Dieta gerada e salva com sucesso!",
+        "dieta_id": nova_dieta.id,
+        "dieta": dieta_gerada
+    }
 # --- BIBLIOTECAS EXTERNAS ---
 import json
 import httpx
@@ -53,6 +112,14 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"message": "MarombAI Backend Operacional 🚀"}
+
+@app.get("/usuarios", response_model=List[User])
+def listar_usuarios(session: Session = Depends(get_session)):
+    """
+    Retorna a lista de todos os usuários cadastrados.
+    """
+    users = session.exec(select(User)).all()
+    return users
 
 @app.post("/gerar-treino")
 async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_session)):
@@ -125,7 +192,12 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
                     )
             
                 dados_n8n = response.json()
-                treino_gerado = dados_n8n.get("treino") # O JSON puro da IA
+                # Tenta pegar a chave 'treino', se não existir, assume que o JSON inteiro é o treino
+                treino_gerado = dados_n8n.get("treino")
+                
+                if not treino_gerado and "exercicios" in dados_n8n:
+                    print("⚠️ Aviso: JSON veio sem a chave raiz 'treino', usando o corpo inteiro.")
+                    treino_gerado = dados_n8n
 
         except Exception as e:
             print(f"❌ Erro de conexão com n8n: {e}")
