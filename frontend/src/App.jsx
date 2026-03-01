@@ -5,6 +5,7 @@ import AdminUsers from './pages/AdminUsers'; // <--- ADICIONE ESTA LINHA
 import AdminWorkouts from './pages/AdminWorkouts'; // <--- IMPORTAR A NOVA PÁGINA
 import AdminDiets from './pages/AdminDiets';
 import DietPage from './pages/DietPage';
+import Login from './pages/Login';
 
 function App() {
   // DEBUG: Se isso não aparecer no console (F12), o código não atualizou!
@@ -14,6 +15,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Onboarding />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} /> {/* <--- Nova Rota */}
         <Route path="/admin" element={<AdminUsers />} /> {/* <--- ADICIONE ESTA LINHA */}
         <Route path="/treinos" element={<AdminWorkouts />} /> {/* <--- NOVA ROTA */}

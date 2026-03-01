@@ -6,7 +6,8 @@ from datetime import datetime
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     nome: str
-    email: Optional[str] = None
+    email: str = Field(unique=True, index=True) # Email agora é obrigatório e único
+    password: str # Senha simples para o MVP
     idade: int
     peso: float
     altura: int

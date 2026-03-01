@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight, ChevronLeft, Dumbbell, Activity, Apple, Scale, Calendar, Brain } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Dumbbell, Activity, Apple, Scale, Calendar, Brain, Lock, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Onboarding() {
@@ -11,6 +11,8 @@ export default function Onboarding() {
   // Estado completo com todos os campos
   const [formData, setFormData] = useState({
     nome: '',
+    email: '',
+    password: '',
     idade: '',
     genero: 'masculino',
     peso: '',
@@ -77,6 +79,9 @@ export default function Onboarding() {
       if (response.ok && data.status === 'sucesso') {
         console.log("✅ Sucesso! Resposta:", data);
 
+        // Salva o ID no localStorage para persistência
+        localStorage.setItem('marombai_user_id', data.user_id);
+
         // Navega para o Dashboard levando o treino
         navigate('/dashboard', { state: { treinoData: data.treino, userId: data.user_id, userProfile: payload } });
       } else {
@@ -140,6 +145,13 @@ export default function Onboarding() {
       {/* Card Principal */}
       <div className="w-full max-w-lg bg-card-bg p-8 rounded-3xl border border-gray-800 shadow-2xl relative overflow-hidden">
 
+        {/* Botão de Login para quem já tem conta */}
+        <div className="absolute top-4 right-4">
+            <button onClick={() => navigate('/login')} className="text-xs text-gray-500 hover:text-neon-green font-bold">
+                JÁ TENHO CONTA
+            </button>
+        </div>
+
         {/* Passo 1: Identidade */}
         {step === 1 && (
           <div className="animate-fade-in space-y-6">
@@ -158,6 +170,33 @@ export default function Onboarding() {
                   onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                   className="w-full bg-dark-bg border border-gray-700 rounded-xl p-4 text-white focus:border-neon-green focus:outline-none transition-colors mt-2 placeholder-gray-600"
                   placeholder="Seu nome ou apelido"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="text-xs text-gray-500 uppercase tracking-wider font-bold">Email</label>
+                <div className="relative mt-2">
+                    <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
+                    <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full bg-dark-bg border border-gray-700 rounded-xl pl-12 pr-4 py-4 text-white focus:border-neon-green focus:outline-none placeholder-gray-600"
+                    placeholder="seu@email.com"
+                    />
+                </div>
+              </div>
+
+              {/* Senha */}
+              <div>
+                <label className="text-xs text-gray-500 uppercase tracking-wider font-bold">Crie uma Senha</label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full bg-dark-bg border border-gray-700 rounded-xl p-4 text-white focus:border-neon-green focus:outline-none mt-2 placeholder-gray-600"
+                  placeholder="******"
                 />
               </div>
 

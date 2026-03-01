@@ -18,6 +18,8 @@ from backend.models import User, WorkoutPlan, DietPlan
 # Usados apenas para validar o que chega do Frontend
 class UserCreate(BaseModel):
     nome: str
+    email: str # Novo campo
+    password: str # Novo campo
     idade: int
     peso: float
     altura: int
@@ -39,6 +41,11 @@ class DietRequest(BaseModel):
     preferencias: list = []
     dieta: str = "onivoro"
     suplementos: list = []
+
+# --- Modelo de Login ---
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 # --- Ciclo de Vida ---
 @asynccontextmanager
@@ -85,6 +92,45 @@ def listar_dietas(session: Session = Depends(get_session)):
     """
     return session.exec(select(DietPlan)).all()
 
+@app.post("/login")
+def login(dados: LoginRequest, session: Session = Depends(get_session)):
+    """
+    Verifica credenciais e retorna o ID do usuário.
+    """
+    statement = select(User).where(User.email == dados.email).where(User.password == dados.password)
+    user = session.exec(statement).first()
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Email ou senha incorretos")
+    
+    return {
+        "status": "sucesso",
+        "user_id": user.id,
+        "nome": user.nome
+    }
+
+@app.get("/user/{user_id}/dashboard")
+def get_user_dashboard(user_id: int, session: Session = Depends(get_session)):
+    """
+    Retorna o último treino e dieta do usuário para montar o Dashboard.
+    """
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    # Pega o último treino criado
+    ultimo_treino = session.exec(select(WorkoutPlan).where(WorkoutPlan.user_id == user_id).order_by(WorkoutPlan.created_at.desc())).first()
+    
+    # Pega a última dieta criada
+    ultima_dieta = session.exec(select(DietPlan).where(DietPlan.user_id == user_id).order_by(DietPlan.created_at.desc())).first()
+
+    return {
+        "user": user,
+        "treino": json.loads(ultimo_treino.treino_json) if ultimo_treino else None,
+        "treino_meta": ultimo_treino, # Metadados (titulo, foco, etc)
+        "dieta": json.loads(ultima_dieta.dieta_json) if ultima_dieta else None
+    }
+
 @app.post("/gerar-treino")
 async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_session)):
     """
@@ -99,8 +145,7 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
     # PASSO 1: Gerenciar Usuário (Salvar ou Atualizar)
     # ---------------------------------------------------------
     # Verifica se já existe um usuário com esse nome (simplificação para MVP)
-    # No futuro usaremos email ou ID fixo de login
-    statement = select(User).where(User.nome == perfil.nome)
+    statement = select(User).where(User.email == perfil.email)
     usuario_existente = session.exec(statement).first()
 
     if usuario_existente:
@@ -108,12 +153,15 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
         usuario_existente.peso = perfil.peso
         usuario_existente.objetivo = perfil.objetivo
         usuario_existente.nivel = perfil.nivel
+        usuario_existente.password = perfil.password # Atualiza senha se mudar
         novo_usuario = usuario_existente
         print(f"🔄 Usuário atualizado: {novo_usuario.nome} (ID: {novo_usuario.id})")
     else:
         # Cria do zero
         novo_usuario = User(
             nome=perfil.nome,
+            email=perfil.email,
+            password=perfil.password,
             idade=perfil.idade,
             peso=perfil.peso,
             altura=perfil.altura,

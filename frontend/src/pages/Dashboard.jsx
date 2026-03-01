@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Play, Clock, Zap, Star, MoreHorizontal, 
@@ -12,23 +12,56 @@ export default function Dashboard({ data }) {
   const navigate = useNavigate();
   const [isDietLoading, setIsDietLoading] = useState(false);
 
-  const treino = location.state?.treinoData;
-  const userId = location.state?.userId;
-  const userProfile = location.state?.userProfile;
+  // Estados locais para dados (caso venham da API e não do state)
+  const [treino, setTreino] = useState(location.state?.treinoData || null);
+  const [userId, setUserId] = useState(location.state?.userId || localStorage.getItem('marombai_user_id'));
+  const [userProfile, setUserProfile] = useState(location.state?.userProfile || null);
+  const [loadingData, setLoadingData] = useState(!treino); // Se não tem treino no state, carrega
   
-  // --- DEBUG: Ver o que chegou ---
-  console.log("📊 DADOS NO DASHBOARD:", treino);
+  // Efeito para buscar dados se o usuário deu F5 ou veio do Login
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!treino && userId) {
+        try {
+          const response = await fetch(`http://127.0.0.1:8000/user/${userId}/dashboard`);
+          if (response.ok) {
+            const data = await response.json();
+            setTreino(data.treino);
+            setUserProfile(data.user); // Perfil básico
+            // Se quiser carregar a dieta também, pode setar aqui
+          }
+        } catch (error) {
+          console.error("Erro ao buscar dados do dashboard:", error);
+        } finally {
+          setLoadingData(false);
+        }
+      } else if (!userId) {
+        setLoadingData(false);
+      }
+    };
+
+    fetchData();
+  }, [userId, treino]);
+
+  if (loadingData) {
+    return (
+        <div className="h-screen flex flex-col items-center justify-center bg-dark-bg text-white">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-neon-green mb-4"></div>
+            <p className="text-gray-400">Carregando seu perfil...</p>
+        </div>
+    );
+  }
 
   // Se não tiver treino nenhum (usuário tentou acessar /dashboard direto), manda voltar
   if (!treino) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-dark-bg text-white gap-4">
-        <p className="text-gray-400">Nenhum treino encontrado.</p>
+        <p className="text-gray-400">Nenhum treino encontrado. Gere um novo ou faça login.</p>
         <button 
-          onClick={() => navigate('/')} 
+          onClick={() => navigate('/login')} 
           className="text-neon-green hover:underline font-bold"
         >
-          Voltar para o início
+          Ir para Login
         </button>
       </div>
     );
@@ -109,7 +142,7 @@ export default function Dashboard({ data }) {
             <span className="text-xs font-bold tracking-wider uppercase">Análise da IA</span>
           </div>
           <p className="text-sm text-gray-300 leading-relaxed italic">
-            "{treino.aiInsight || treino.ai_insight || "Foco total no objetivo!"}"
+            "{treino.aiInsight || treino.ai_insight || "Foco total no objetivo! Continue treinando pesado."}"
           </p>
         </div>
 
@@ -117,9 +150,9 @@ export default function Dashboard({ data }) {
         <div>
           <div className="flex justify-between items-end mb-4">
             <div>
-              <h2 className="text-3xl font-bold text-white mb-1 leading-tight">{treino.titulo}</h2>
+              <h2 className="text-3xl font-bold text-white mb-1 leading-tight">{treino.titulo || "Treino Personalizado"}</h2>
               <span className="text-neon-green text-sm font-medium bg-neon-green/10 px-3 py-1 rounded-full">
-                {treino.foco}
+                {treino.foco || "Geral"}
               </span>
             </div>
             <button className="text-xs text-gray-500 underline">Personalizar</button>
@@ -128,13 +161,13 @@ export default function Dashboard({ data }) {
           {/* Stats Row */}
           <div className="flex gap-3 mb-6">
             <div className="flex items-center gap-2 px-3 py-2 bg-gray-900 rounded-lg border border-gray-800 text-xs text-gray-400">
-              <Clock size={14} className="text-neon-green" /> {treino.duracao}
+              <Clock size={14} className="text-neon-green" /> {treino.duracao || "60 min"}
             </div>
             <div className="flex items-center gap-2 px-3 py-2 bg-gray-900 rounded-lg border border-gray-800 text-xs text-gray-400">
-              <Zap size={14} className="text-yellow-500" /> {treino.intensidade}
+              <Zap size={14} className="text-yellow-500" /> {treino.intensidade || "Média"}
             </div>
             <div className="flex items-center gap-2 px-3 py-2 bg-gray-900 rounded-lg border border-gray-800 text-xs text-gray-400">
-              <Star size={14} className="text-purple-500" /> {treino.xp} XP
+              <Star size={14} className="text-purple-500" /> {treino.xp || "100"} XP
             </div>
           </div>
         </div>
