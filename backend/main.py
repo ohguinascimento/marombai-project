@@ -1,62 +1,3 @@
-# --- Modelos de Entrada para Dieta ---
-class DietRequest(BaseModel):
-    user_id: int
-    objetivo: str
-    restricoes: list = []
-    preferencias: list = []
-    dieta: str = "onivoro"
-    suplementos: list = []
-
-# --- Endpoint para gerar dieta personalizada ---
-@app.post("/gerar-dieta")
-async def gerar_dieta(dados: DietRequest, session: Session = Depends(get_session)):
-    """
-    1. Recebe dados do Front
-    2. Busca usuário
-    3. Gera dieta personalizada (mock/IA)
-    4. Salva dieta no banco
-    5. Retorna dieta
-    """
-    # 1. Buscar usuário
-    usuario = session.get(User, dados.user_id)
-    if not usuario:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
-
-    # 2. Mock de geração de dieta (substituir por IA/n8n depois)
-    dieta_gerada = {
-        "refeicoes": [
-            {"nome": "Café da manhã", "itens": ["Ovos mexidos", "Aveia", "Banana"]},
-            {"nome": "Almoço", "itens": ["Arroz integral", "Frango grelhado", "Salada"]},
-            {"nome": "Jantar", "itens": ["Peixe", "Batata doce", "Brócolis"]}
-        ],
-        "objetivo": dados.objetivo,
-        "restricoes": dados.restricoes,
-        "preferencias": dados.preferencias,
-        "dieta": dados.dieta,
-        "suplementos": dados.suplementos
-    }
-
-    # 3. Salvar dieta no banco
-    from datetime import datetime
-    import json
-    nova_dieta = DietPlan(
-        titulo=f"Dieta para {usuario.nome}",
-        objetivo=dados.objetivo,
-        restricoes=json.dumps(dados.restricoes),
-        dieta_json=json.dumps(dieta_gerada),
-        user_id=usuario.id,
-        created_at=datetime.utcnow()
-    )
-    session.add(nova_dieta)
-    session.commit()
-    session.refresh(nova_dieta)
-
-    return {
-        "status": "sucesso",
-        "mensagem": "Dieta gerada e salva com sucesso!",
-        "dieta_id": nova_dieta.id,
-        "dieta": dieta_gerada
-    }
 # --- BIBLIOTECAS EXTERNAS ---
 import json
 import httpx
@@ -89,6 +30,15 @@ class UserCreate(BaseModel):
     local: str
     dieta: str
     suplementos: List[str] = []
+
+# --- Modelos de Entrada para Dieta ---
+class DietRequest(BaseModel):
+    user_id: int
+    objetivo: str
+    restricoes: list = []
+    preferencias: list = []
+    dieta: str = "onivoro"
+    suplementos: list = []
 
 # --- Ciclo de Vida ---
 @asynccontextmanager
@@ -127,6 +77,13 @@ def listar_treinos(session: Session = Depends(get_session)):
     Retorna a lista de todos os treinos salvos no banco de dados.
     """
     return session.exec(select(WorkoutPlan)).all()
+
+@app.get("/dietas")
+def listar_dietas(session: Session = Depends(get_session)):
+    """
+    Retorna a lista de todas as dietas salvas no banco de dados.
+    """
+    return session.exec(select(DietPlan)).all()
 
 @app.post("/gerar-treino")
 async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_session)):
@@ -262,4 +219,55 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
         "user_id": novo_usuario.id,
         "treino_id": novo_plano.id if treino_gerado else None,
         "treino": treino_gerado # Manda o JSON normal pro React exibir
+    }
+
+# --- Endpoint para gerar dieta personalizada ---
+@app.post("/gerar-dieta")
+async def gerar_dieta(dados: DietRequest, session: Session = Depends(get_session)):
+    """
+    1. Recebe dados do Front
+    2. Busca usuário
+    3. Gera dieta personalizada (mock/IA)
+    4. Salva dieta no banco
+    5. Retorna dieta
+    """
+    # 1. Buscar usuário
+    usuario = session.get(User, dados.user_id)
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    # 2. Mock de geração de dieta (substituir por IA/n8n depois)
+    dieta_gerada = {
+        "refeicoes": [
+            {"nome": "Café da manhã", "itens": ["Ovos mexidos", "Aveia", "Banana"]},
+            {"nome": "Almoço", "itens": ["Arroz integral", "Frango grelhado", "Salada"]},
+            {"nome": "Jantar", "itens": ["Peixe", "Batata doce", "Brócolis"]}
+        ],
+        "objetivo": dados.objetivo,
+        "restricoes": dados.restricoes,
+        "preferencias": dados.preferencias,
+        "dieta": dados.dieta,
+        "suplementos": dados.suplementos
+    }
+
+    # 3. Salvar dieta no banco
+    from datetime import datetime
+    import json
+    nova_dieta = DietPlan(
+        titulo=f"Dieta para {usuario.nome}",
+        objetivo=dados.objetivo,
+        restricoes=json.dumps(dados.restricoes),
+        dieta_json=json.dumps(dieta_gerada),
+        user_id=usuario.id,
+        created_at=datetime.utcnow()
+    )
+    session.add(nova_dieta)
+    session.commit()
+    session.refresh(nova_dieta)
+
+    return {
+        "status": "sucesso",
+        "mensagem": "Dieta gerada e salva com sucesso!",
+        "dieta_id": nova_dieta.id,
+        "dieta": dieta_gerada
     }
