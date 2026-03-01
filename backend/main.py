@@ -121,6 +121,13 @@ def listar_usuarios(session: Session = Depends(get_session)):
     users = session.exec(select(User)).all()
     return users
 
+@app.get("/treinos")
+def listar_treinos(session: Session = Depends(get_session)):
+    """
+    Retorna a lista de todos os treinos salvos no banco de dados.
+    """
+    return session.exec(select(WorkoutPlan)).all()
+
 @app.post("/gerar-treino")
 async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_session)):
     """
@@ -165,7 +172,7 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
     # PASSO 2: Chamar a Inteligência (n8n)
     # ---------------------------------------------------------
     #webhook_url = "http://localhost:5678/webhook/gerar-treino" # URL interna do Docker (antiga para teste local)
-    webhook_url = os.getenv("WEBHOOK_URL", "http://localhost:5678/webhook/gerar-treino")
+    webhook_url = os.getenv("WEBHOOK_URL", "http://localhost:5678/webhook-test/gerar-treino")
     
     payload = {
         "nome": novo_usuario.nome,
@@ -198,6 +205,15 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
                 if not treino_gerado and "exercicios" in dados_n8n:
                     print("⚠️ Aviso: JSON veio sem a chave raiz 'treino', usando o corpo inteiro.")
                     treino_gerado = dados_n8n
+                
+                # CORREÇÃO DE SEGURANÇA: Se for string, tenta converter para Dict
+                if isinstance(treino_gerado, str):
+                    # Remove markdown comum (```json ... ```) que quebra o parser
+                    cleaned_json = treino_gerado.replace("```json", "").replace("```", "").strip()
+                    try:
+                        treino_gerado = json.loads(cleaned_json)
+                    except:
+                        print(f"⚠️ Falha ao converter string para JSON. Conteúdo: {treino_gerado[:50]}...")
 
         except Exception as e:
             print(f"❌ Erro de conexão com n8n: {e}")
@@ -206,7 +222,16 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
     # ---------------------------------------------------------
     # PASSO 3: A Gravadora (Salvar Treino no Banco) 💾
     # ---------------------------------------------------------
-    if treino_gerado:
+    if not treino_gerado:
+        print("❌ Erro Crítico: O n8n retornou 200 OK, mas sem o objeto 'treino'.")
+        print(f"🔍 Resposta Bruta do n8n: {dados_n8n}")
+        raise HTTPException(
+            status_code=502, 
+            detail="A IA retornou uma resposta vazia. Verifique no n8n se o nó Webhook está configurado como 'Respond: When Last Node Finishes'."
+        )
+
+    # Verifica se é um dicionário válido antes de tentar acessar campos (.get)
+    if treino_gerado and isinstance(treino_gerado, dict):
         # Convertendo a lista de exercícios para String JSON para caber no banco
         exercicios_json_str = json.dumps(treino_gerado.get("exercicios", []))
 
@@ -215,7 +240,8 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
             titulo=treino_gerado.get("titulo", "Treino Personalizado"),
             foco=treino_gerado.get("foco", perfil.objetivo),
             nivel_dificuldade=treino_gerado.get("intensidade", "Média"), # Mapeando Intensidade -> Nivel
-            ai_insight=treino_gerado.get("aiInsight", "Análise gerada pela IA"),
+            # Tenta pegar aiInsight (camelCase) ou ai_insight (snake_case)
+            ai_insight=treino_gerado.get("aiInsight") or treino_gerado.get("ai_insight") or "Análise gerada pela IA",
             treino_json=exercicios_json_str # Salvando o JSON bruto aqui!
         )
 
@@ -227,6 +253,9 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
     # ---------------------------------------------------------
     # PASSO 4: Retorno ao Frontend
     # ---------------------------------------------------------
+    
+    print(f"🚀 Enviando para o Frontend: {type(treino_gerado)}")
+    
     return {
         "status": "sucesso",
         "mensagem": "Treino salvo e gerado com sucesso!",

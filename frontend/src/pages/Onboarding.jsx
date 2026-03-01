@@ -57,13 +57,20 @@ export default function Onboarding() {
     console.log("🚀 Enviando payload formatado:", payload);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/gerar-treino', {
+      // Cria uma promessa de delay mínimo de 1.5 segundos para UX
+      const minDelay = new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Executa a requisição e o delay em paralelo
+      const [response] = await Promise.all([
+        fetch('http://127.0.0.1:8000/gerar-treino', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload), // Enviamos o 'payload' limpo, não o 'formData' sujo
-      });
+      }),
+        minDelay
+      ]);
 
       const data = await response.json();
 

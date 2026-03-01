@@ -13,6 +13,9 @@ export default function Dashboard({ data }) {
   // Tenta pegar os dados vindo da Rota (state) OU vindo via props
   // Se não vier de lugar nenhum, fica null
   const treino = location.state?.treinoData || data || null;
+  
+  // --- DEBUG: Ver o que chegou ---
+  console.log("📊 DADOS NO DASHBOARD:", treino);
 
   // Se não tiver treino nenhum (usuário tentou acessar /dashboard direto), manda voltar
   if (!treino) {
@@ -59,7 +62,7 @@ export default function Dashboard({ data }) {
             <span className="text-xs font-bold tracking-wider uppercase">Análise da IA</span>
           </div>
           <p className="text-sm text-gray-300 leading-relaxed italic">
-            "{treino.aiInsight}"
+            "{treino.aiInsight || treino.ai_insight || "Foco total no objetivo!"}"
           </p>
         </div>
 
@@ -96,8 +99,8 @@ export default function Dashboard({ data }) {
             <span className="flex items-center gap-1"><RefreshCw size={12}/> Trocas disponíveis</span>
           </div>
 
-          {treino.exercicios && treino.exercicios.map((ex) => (
-            <div key={ex.id} className="bg-card-bg rounded-xl p-4 flex gap-4 border border-gray-800 hover:border-gray-600 transition-colors cursor-pointer group">
+          {treino.exercicios && Array.isArray(treino.exercicios) && treino.exercicios.map((ex, index) => (
+            <div key={ex.id || index} className="bg-card-bg rounded-xl p-4 flex gap-4 border border-gray-800 hover:border-gray-600 transition-colors cursor-pointer group">
               {/* Imagem do Exercicio */}
               <div className="w-20 h-20 rounded-lg bg-gray-800 overflow-hidden flex-shrink-0 relative">
                 {/* Fallback de imagem caso a API mande vazio */}
