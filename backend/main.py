@@ -12,7 +12,7 @@ import os
 # --- ARQUIVOS LOCAIS ---
 # O segredo é adicionar o "backend." antes do nome do arquivo
 from backend.database import get_session, init_db
-from backend.models import User, WorkoutPlan
+from backend.models import User, WorkoutPlan, DietPlan
 
 # --- Modelos de Entrada (Pydantic) ---
 # Usados apenas para validar o que chega do Frontend

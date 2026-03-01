@@ -1,0 +1,20 @@
+# Frontend (Site Principal)
+marombai.app {
+    reverse_proxy frontend:5173
+}
+
+www.marombai.app {
+    redir https://marombai.app{uri}
+}
+
+# Backend (API)
+# Importante: Crie o subdomínio 'api' no Name.com apontando para o IP da VPS
+api.marombai.app {
+    reverse_proxy backend:8000
+}
+
+# n8n (Fluxos)
+# Importante: Crie o subdomínio 'n8n' no Name.com apontando para o IP da VPS
+n8n.marombai.app {
+    reverse_proxy n8n:5678
+}
