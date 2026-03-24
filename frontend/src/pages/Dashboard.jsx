@@ -122,7 +122,7 @@ export default function Dashboard({ data }) {
             <img src="https://github.com/shadcn.png" alt="Avatar" />
           </div>
           <div>
-            <h1 className="font-bold text-lg">Olá, Maromba 👋</h1>
+            <h1 className="font-bold text-lg">Olá, {userProfile?.nome || localStorage.getItem('marombai_user_nome') || "Maromba"} 👋</h1>
             <p className="text-xs text-gray-400">Hora do show!</p>
           </div>
         </div>

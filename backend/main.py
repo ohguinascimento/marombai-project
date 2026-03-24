@@ -139,7 +139,7 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
 
     # 2. Chamar n8n
     # Padrão: localhost (para rodar local). Docker injeta a variável de ambiente para 'n8n'.
-    webhook_url = os.getenv("WEBHOOK_URL", "http://localhost:5678/webhook/gerar-treino")
+    webhook_url = os.getenv("WEBHOOK_URL", "http://localhost:5678/webhook-test/gerar-treino")
     
     payload = {
         "nome": novo_usuario.nome,
@@ -216,7 +216,7 @@ async def gerar_dieta(dados: DietRequest, session: Session = Depends(get_session
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-    webhook_url_dieta = os.getenv("WEBHOOK_URL_DIETA", "http://localhost:5678/webhook/gerar-dieta")
+    webhook_url_dieta = os.getenv("WEBHOOK_URL_DIETA", "http://localhost:5678/webhook-test/gerar-dieta")
     
     user_data = usuario.dict()
     if user_data.get("created_at"):

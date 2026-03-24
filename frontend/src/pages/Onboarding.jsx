@@ -81,6 +81,7 @@ export default function Onboarding() {
 
         // Salva o ID no localStorage para persistência
         localStorage.setItem('marombai_user_id', data.user_id);
+        localStorage.setItem('marombai_user_nome', payload.nome);
 
         // Navega para o Dashboard levando o treino
         navigate('/dashboard', { state: { treinoData: data.treino, userId: data.user_id, userProfile: payload } });
