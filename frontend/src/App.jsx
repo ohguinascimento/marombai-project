@@ -5,6 +5,8 @@ import AdminUsers from './pages/AdminUsers'; // <--- ADICIONE ESTA LINHA
 import AdminWorkouts from './pages/AdminWorkouts'; // <--- IMPORTAR A NOVA PÁGINA
 import AdminDiets from './pages/AdminDiets';
 import DietPage from './pages/DietPage';
+import DiaryPage from './pages/DiaryPage'; // <--- IMPORTAR A PAGINA DE DIARIO
+import EvolutionPage from './pages/EvolutionPage'; // <--- IMPORTAR A PAGINA DE EVOLUCAO
 import Login from './pages/Login';
 
 function App() {
@@ -21,6 +23,8 @@ function App() {
         <Route path="/treinos" element={<AdminWorkouts />} /> {/* <--- NOVA ROTA */}
         <Route path="/dietas" element={<AdminDiets />} />
         <Route path="/dieta" element={<DietPage />} />
+        <Route path="/diario" element={<DiaryPage />} /> {/* <--- NOVA ROTA DIARIO */}
+        <Route path="/evolucao" element={<EvolutionPage />} /> {/* <--- NOVA ROTA EVOLUCAO */}
         
         {/* Rota Coringa (*) para capturar páginas não encontradas */}
         <Route path="*" element={

@@ -228,12 +228,18 @@ export default function Dashboard({ data }) {
             <span className="text-[10px] font-bold">Treino</span>
           </button>
           
-          <button className="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+          <button 
+            onClick={() => navigate('/diario')}
+            className="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors"
+          >
             <Calendar size={20} />
             <span className="text-[10px] font-medium">Diário</span>
           </button>
 
-          <button className="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+          <button 
+            onClick={() => navigate('/evolucao')}
+            className="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors"
+          >
             <Activity size={20} />
             <span className="text-[10px] font-medium">Evolução</span>
           </button>
