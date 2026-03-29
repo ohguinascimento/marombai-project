@@ -1,0 +1,58 @@
+name: Weekly Progress Report
+
+on:
+  schedule:
+    - cron: '0 9 * * 1' # Toda segunda às 09:00 UTC
+  workflow_dispatch: # Permite rodar manualmente pelo painel do GitHub
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Garante que todo o histórico seja baixado
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run Report Script
+        run: python generate_weekly_report.py
+
+      - name: Create GitHub Issue
+        id: create-issue
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "📈 Relatório de Progresso Semanal - MarombAI"
+          content-filepath: weekly_report_full.md
+          labels: automated-report, alpha-logs
+
+      - name: Notify Discord
+        if: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ISSUE_URL: ${{ steps.create-issue.outputs.issue-url }}
+        run: |
+          CONTENT=$(cat weekly_report_discord.md)
+          # Usa o jq para concatenar a URL da Issue de forma segura ao conteúdo
+          jq -n --arg msg "$CONTENT" --arg url "$ISSUE_URL" \
+            '{content: ($msg + "\n\n🔗 **Log Completo no GitHub:** " + $url)}' > discord_payload.json
+          curl -H "Content-Type: application/json" -d @discord_payload.json $DISCORD_WEBHOOK
+
+      - name: Notify Slack
+        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          ISSUE_URL: ${{ steps.create-issue.outputs.issue-url }}
+        run: |
+          CONTENT=$(cat weekly_report_full.md)
+          jq -n --arg msg "$CONTENT" --arg url "$ISSUE_URL" \
+            '{text: ($msg + "\n\n🔗 **Log Completo no GitHub:** " + $url)}' > slack_payload.json
+          curl -H "Content-Type: application/json" -d @slack_payload.json $SLACK_WEBHOOK
