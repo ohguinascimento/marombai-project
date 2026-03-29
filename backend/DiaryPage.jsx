@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Calendar, Clock, Zap, CheckCircle2, MessageSquare } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL;
-
 export default function DiaryPage() {
   const navigate = useNavigate();
   const userId = localStorage.getItem('marombai_user_id');
@@ -13,11 +11,11 @@ export default function DiaryPage() {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const response = await fetch(`${API_URL}/user/${userId}/evolution`);
+        const response = await fetch(`http://127.0.0.1:8000/user/${userId}/evolution`);
         if (response.ok) {
           const data = await response.json();
           // Ordenamos do mais recente para o mais antigo para o Diário
-          setLogs([...data].reverse());
+          setLogs(data.reverse());
         }
       } catch (error) {
         console.error("Erro ao buscar diário:", error);
@@ -26,11 +24,7 @@ export default function DiaryPage() {
       }
     };
 
-    if (userId) {
-      fetchLogs();
-    } else {
-      setLoading(false);
-    }
+    if (userId) fetchLogs();
   }, [userId]);
 
   if (loading) return (

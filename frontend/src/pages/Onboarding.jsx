@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight, ChevronLeft, Dumbbell, Activity, Apple, Scale, Calendar, Brain, Lock, Mail } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Dumbbell, Activity, Apple, Scale, Calendar, Brain, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -9,6 +9,8 @@ export default function Onboarding() {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const totalSteps = 6;
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const exerciciosDisponiveis = [
     { id: 1, nome: "Supino Reto", grupo: "Peito", series: "4x10", carga: "Moderada" },
@@ -241,26 +243,44 @@ export default function Onboarding() {
               {/* Senha */}
               <div>
                 <label className="text-xs text-gray-500 uppercase tracking-wider font-bold">Crie uma Senha</label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full bg-dark-bg border border-gray-700 rounded-xl p-4 text-white focus:border-neon-green focus:outline-none mt-2 placeholder-gray-600"
-                  placeholder="******"
-                />
+                <div className="relative mt-2">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full bg-dark-bg border border-gray-700 rounded-xl p-4 pr-12 text-white focus:border-neon-green focus:outline-none placeholder-gray-600"
+                    placeholder="******"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-white"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
               {/* Confirmar Senha */}
               <div>
                 <label className="text-xs text-gray-500 uppercase tracking-wider font-bold">Confirme a Senha</label>
-                <input
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  className={`w-full bg-dark-bg border rounded-xl p-4 text-white focus:outline-none mt-2 placeholder-gray-600 transition-colors
-                    ${formData.confirmPassword && formData.password !== formData.confirmPassword ? 'border-red-500' : 'border-gray-700 focus:border-neon-green'}`}
-                  placeholder="******"
-                />
+                <div className="relative mt-2">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    className={`w-full bg-dark-bg border rounded-xl p-4 pr-12 text-white focus:outline-none placeholder-gray-600 transition-colors
+                      ${formData.confirmPassword && formData.password !== formData.confirmPassword ? 'border-red-500' : 'border-gray-700 focus:border-neon-green'}`}
+                    placeholder="******"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-white"
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
               {/* Idade */}

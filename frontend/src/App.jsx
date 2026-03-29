@@ -8,6 +8,8 @@ import DietPage from './pages/DietPage';
 import DiaryPage from './pages/DiaryPage'; // <--- IMPORTAR A PAGINA DE DIARIO
 import EvolutionPage from './pages/EvolutionPage'; // <--- IMPORTAR A PAGINA DE EVOLUCAO
 import Login from './pages/Login';
+import WorkoutExecution from './pages/WorkoutExecution';
+import SettingsPage from './pages/SettingsPage';
 
 function App() {
   // DEBUG: Se isso não aparecer no console (F12), o código não atualizou!
@@ -19,6 +21,8 @@ function App() {
         <Route path="/" element={<Onboarding />} />
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} /> {/* <--- Nova Rota */}
+        <Route path="/workout-execution" element={<WorkoutExecution />} />
+        <Route path="/configuracoes" element={<SettingsPage />} />
         <Route path="/admin" element={<AdminUsers />} /> {/* <--- ADICIONE ESTA LINHA */}
         <Route path="/treinos" element={<AdminWorkouts />} /> {/* <--- NOVA ROTA */}
         <Route path="/dietas" element={<AdminDiets />} />

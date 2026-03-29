@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Mail, ArrowRight, RefreshCcw } from 'lucide-react';
+import { Lock, Mail, ArrowRight, RefreshCcw, Eye, EyeOff } from 'lucide-react';
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -10,6 +12,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -80,13 +83,20 @@ export default function Login() {
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-dark-bg border border-gray-700 rounded-xl pl-12 pr-4 py-4 text-white focus:border-neon-green focus:outline-none transition-colors"
                 placeholder="******"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 
