@@ -25,7 +25,7 @@ export default function ResetPasswordConfirm() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/reset-password/confirm`, {
+      const response = await fetch(`${API_URL}/auth/reset-password/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, new_password: password }),

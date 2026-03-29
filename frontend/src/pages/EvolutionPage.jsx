@@ -1,23 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Activity, TrendingUp, Calendar, Clock, Zap, Trophy } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL;
+import api from '../api/api.js';
 
 export default function EvolutionPage() {
   const navigate = useNavigate();
-  const userId = localStorage.getItem('marombai_user_id');
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchEvolution = async () => {
       try {
-        const response = await fetch(`${API_URL}/user/${userId}/evolution`);
-        if (response.ok) {
-          const data = await response.json();
-          setLogs(data);
-        }
+        // O backend agora identifica o usuário pelo Token JWT
+        const { data } = await api.get('/workout/evolution');
+        setLogs(data);
       } catch (error) {
         console.error("Erro ao buscar evolução:", error);
       } finally {
@@ -25,12 +21,8 @@ export default function EvolutionPage() {
       }
     };
 
-    if (userId) {
-      fetchEvolution();
-    } else {
-      setLoading(false);
-    }
-  }, [userId]);
+    fetchEvolution();
+  }, []);
 
   if (loading) return <div className="min-h-screen bg-dark-bg flex items-center justify-center text-neon-green font-black italic">ANALISANDO PERFORMANCE...</div>;
 

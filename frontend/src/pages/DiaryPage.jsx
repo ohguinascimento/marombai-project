@@ -1,24 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Calendar, Clock, Zap, CheckCircle2, MessageSquare } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL;
+import api from '../api/api.js';
 
 export default function DiaryPage() {
   const navigate = useNavigate();
-  const userId = localStorage.getItem('marombai_user_id');
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const response = await fetch(`${API_URL}/user/${userId}/evolution`);
-        if (response.ok) {
-          const data = await response.json();
-          // Ordenamos do mais recente para o mais antigo para o Diário
-          setLogs([...data].reverse());
-        }
+        // O backend agora identifica o usuário pelo Token JWT
+        const { data } = await api.get('/workout/evolution');
+        // Ordenamos do mais recente para o mais antigo para o Diário
+        setLogs([...data].reverse());
       } catch (error) {
         console.error("Erro ao buscar diário:", error);
       } finally {
@@ -26,12 +22,8 @@ export default function DiaryPage() {
       }
     };
 
-    if (userId) {
-      fetchLogs();
-    } else {
-      setLoading(false);
-    }
-  }, [userId]);
+    fetchLogs();
+  }, []);
 
   if (loading) return (
     <div className="min-h-screen bg-dark-bg flex items-center justify-center text-neon-green font-black italic">

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, CheckCircle2, Clock, Zap, Timer, Star } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL;
+import api from '../api/api.js';
 
 export default function WorkoutExecution() {
   const location = useLocation();
@@ -99,18 +98,12 @@ export default function WorkoutExecution() {
     };
 
     try {
-      const response = await fetch(`${API_URL}/workout/finish`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        alert("🔥 Treino Finalizado! Monstro!");
-        navigate('/dashboard');
-      }
+      await api.post('/workout/finish', payload);
+      alert("🔥 Treino Finalizado! Monstro!");
+      navigate('/dashboard');
     } catch (error) {
       console.error("Erro ao finalizar treino:", error);
+      alert(error.response?.data?.detail || "Erro ao salvar treino.");
     }
   };
 

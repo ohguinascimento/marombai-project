@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Mail, ArrowRight, RefreshCcw, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, ArrowRight, RefreshCcw, Eye, EyeOff, Send } from 'lucide-react';
 import api from '../api/api.js';
 
 export default function Login() {
@@ -16,15 +16,15 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const url = isResetting ? '/reset-password' : '/login';
+      const url = isResetting ? '/auth/reset-password' : '/auth/login';
       const payload = isResetting 
-        ? { email: email.trim().toLowerCase(), new_password: password }
+        ? { email: email.trim().toLowerCase() }
         : { email: email.trim().toLowerCase(), password };
 
       const { data } = await api.post(url, payload);
 
       if (isResetting) {
-        alert("Senha alterada com sucesso! Agora você pode entrar.");
+        alert("Link de recuperação enviado! Verifique seu e-mail (simulado no terminal do backend).");
         setIsResetting(false);
         setPassword('');
         return;
@@ -49,8 +49,8 @@ export default function Login() {
     <div className="min-h-screen bg-dark-bg text-white flex items-center justify-center p-6 font-sans">
       <div className="w-full max-w-md bg-card-bg p-8 rounded-3xl border border-gray-800 shadow-2xl">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">{isResetting ? 'Recuperar Senha' : 'Bem-vindo de volta'}</h1>
-          <p className="text-gray-400">{isResetting ? 'Defina sua nova senha abaixo' : 'Entre para acessar seus treinos'}</p>
+          <h1 className="text-3xl font-bold text-white mb-2">{isResetting ? 'Recuperar Senha' : 'Bem-vindo de Volta'}</h1>
+          <p className="text-gray-400">{isResetting ? 'Enviaremos um link de recuperação para seu e-mail.' : 'Entre para acessar seus treinos'}</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
@@ -69,7 +69,8 @@ export default function Login() {
             </div>
           </div>
 
-          <div>
+          {!isResetting && (
+            <div>
             <label className="text-xs text-gray-500 uppercase tracking-wider font-bold block mb-2">{isResetting ? 'Nova Senha' : 'Senha'}</label>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
@@ -90,13 +91,14 @@ export default function Login() {
               </button>
             </div>
           </div>
+          )}
 
           <button
             type="submit"
             disabled={loading}
             className="w-full bg-neon-green text-black font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-[0_0_15px_rgba(0,255,148,0.3)] disabled:opacity-50"
           >
-            {loading ? 'Processando...' : (isResetting ? 'Redefinir Senha' : 'Acessar Conta')} {isResetting ? <RefreshCcw size={20} /> : <ArrowRight size={20} />}
+            {loading ? 'Processando...' : (isResetting ? 'Enviar Link de Recuperação' : 'Acessar Conta')} {isResetting ? <Send size={20} /> : <ArrowRight size={20} />}
           </button>
         </form>
 
