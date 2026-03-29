@@ -38,8 +38,10 @@ export default function Login() {
           return;
         }
         // Salva sessão
-        localStorage.setItem('marombai_user_id', data.user_id);
-        localStorage.setItem('marombai_user_nome', data.nome);
+        localStorage.setItem('marombai_token', data.access_token);
+        localStorage.setItem('marombai_user_id', data.user.id);
+        localStorage.setItem('marombai_user_nome', data.user.nome);
+        localStorage.setItem('marombai_user_role', data.user.role);
         navigate('/dashboard');
       } else {
         alert(data.detail || "Erro ao entrar");

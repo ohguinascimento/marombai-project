@@ -17,6 +17,7 @@ class User(SQLModel, table=True):
     objetivo: str
     nivel: str
     dieta: Optional[str] = "onivoro"
+    role: str = Field(default="user") # 'user' ou 'admin'
     lesoes: Optional[str] = "[]" # Salvaremos como string JSON
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
@@ -49,6 +50,16 @@ class WorkoutLog(SQLModel, table=True):
     esforco_percebido: Optional[int] = None # 1 a 10
     observacoes: Optional[str] = None
     detalhes_json: str # Cargas e reps reais realizadas
+
+# --- Tabela de Logs de Reset de Senha (Segurança) ---
+class PasswordResetLog(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    email: str
+    action: str  # "request" ou "confirm"
+    status: str  # "success", "failed", "user_not_found"
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 # --- Tabela de Dietas (Histórico) ---
 class DietPlan(SQLModel, table=True):

@@ -1,8 +1,12 @@
 # --- BIBLIOTECAS EXTERNAS ---
 import json
 import httpx
-from fastapi import FastAPI, Depends, HTTPException
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+from passlib.context import CryptContext
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware 
+from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, select
 from contextlib import asynccontextmanager
 from typing import List, Optional
@@ -11,7 +15,20 @@ import os
 
 # --- ARQUIVOS LOCAIS ---
 from backend.database import get_session, init_db
-from backend.models import User, WorkoutPlan, DietPlan, WorkoutLog
+from backend.models import User, WorkoutPlan, DietPlan, WorkoutLog, PasswordResetLog
+
+# --- CONFIGURAÇÃO DE SEGURANÇA (HASHING) ---
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# --- CONFIGURAÇÃO JWT ---
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY and os.getenv("ENV") == "production":
+    raise RuntimeError("ERRO CRÍTICO: SECRET_KEY não configurada em ambiente de produção!")
+SECRET_KEY = SECRET_KEY or "dev_secret_key_only"
+
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 dias
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # --- Modelos de Entrada (Pydantic) ---
 class UserCreate(BaseModel):
@@ -59,6 +76,10 @@ class WorkoutLogCreate(BaseModel):
 
 class PasswordResetRequest(BaseModel):
     email: str
+    new_password: str
+
+class PasswordResetConfirmRequest(BaseModel):
+    token: str
     new_password: str
 
 class ChangePasswordRequest(BaseModel):
@@ -120,6 +141,68 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
+# --- FUNÇÕES AUXILIARES DE SEGURANÇA ---
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Não foi possível validar as credenciais",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+        
+    user = session.get(User, int(user_id))
+    if user is None:
+        raise credentials_exception
+    return user
+
+def create_password_reset_token(email: str):
+    """Gera um token seguro e temporário para reset de senha."""
+    expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode = {"exp": expire, "sub": email, "purpose": "password_reset"}
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+async def send_sendgrid_email(to_email: str, subject: str, html_content: str):
+    """Integração real com a API v3 do SendGrid via httpx."""
+    api_key = os.getenv("SENDGRID_API_KEY")
+    if not api_key:
+        print(f"⚠️ SENDGRID_API_KEY ausente. Simulação de e-mail para {to_email}")
+        return
+
+    url = "https://api.sendgrid.com/v3/mail/send"
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    payload = {
+        "personalizations": [{"to": [{"email": to_email}]}],
+        "from": {"email": "suporte@marombai.app", "name": "MarombAI Support"},
+        "subject": subject,
+        "content": [{"type": "text/html", "value": html_content}]
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, json=payload, headers=headers)
+        return response.status_code == 202
+
+async def get_current_admin(current_user: User = Depends(get_current_user)):
+    """Verifica se o usuário atual tem privilégios de administrador."""
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado: Requer privilégios de administrador"
+        )
+    return current_user
+
 # --- Ciclo de Vida ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -173,17 +256,22 @@ def selecionar_treino_template(user_id: int, template_id: int, session: Session 
     
     return {"status": "sucesso", "mensagem": "Treino aplicado!", "treino": template}
 
-@app.get("/usuarios", response_model=List[User])
-def listar_usuarios(session: Session = Depends(get_session)):
+@app.get("/usuarios", response_model=List[User], dependencies=[Depends(get_current_admin)])
+def listar_usuarios(session: Session = Depends(get_session), admin: User = Depends(get_current_admin)):
     return session.exec(select(User)).all()
 
-@app.get("/treinos")
+@app.get("/treinos", dependencies=[Depends(get_current_admin)])
 def listar_treinos(session: Session = Depends(get_session)):
     return session.exec(select(WorkoutPlan)).all()
 
-@app.get("/dietas")
+@app.get("/dietas", dependencies=[Depends(get_current_admin)])
 def listar_dietas(session: Session = Depends(get_session)):
     return session.exec(select(DietPlan)).all()
+
+@app.get("/admin/security-logs", response_model=List[PasswordResetLog], dependencies=[Depends(get_current_admin)])
+def listar_logs_seguranca(session: Session = Depends(get_session)):
+    """Retorna todos os logs de segurança ordenados pelos mais recentes."""
+    return session.exec(select(PasswordResetLog).order_by(PasswordResetLog.created_at.desc())).all()
 
 @app.post("/login")
 def login(dados: LoginRequest, session: Session = Depends(get_session)):
@@ -198,30 +286,88 @@ def login(dados: LoginRequest, session: Session = Depends(get_session)):
         raise HTTPException(status_code=401, detail="Email ou senha incorretos")
 
     # Se achou o usuário, conferimos a senha
-    if user.password != dados.password:
+    if not pwd_context.verify(dados.password, user.password):
         print(f"❌ [LOGIN] Falha: Senha incorreta para '{email_normalizado}'.")
-        print(f"   Digitada: '{dados.password}' | No Banco: '{user.password}'")
+        print(f"   Tentativa com senha inválida para o hash no banco.")
         raise HTTPException(status_code=401, detail="Email ou senha incorretos")
 
     print(f"✅ [LOGIN] Sucesso: {user.nome} (ID: {user.id})")
+    
+    # Gera o Token JWT
+    access_token = create_access_token(data={"sub": str(user.id)})
+    
     return {
-        "status": "sucesso",
-        "user_id": user.id,
-        "nome": user.nome
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {"id": user.id, "nome": user.nome, "role": user.role}
     }
 
 @app.post("/reset-password")
-def reset_password(dados: PasswordResetRequest, session: Session = Depends(get_session)):
+async def request_password_reset(dados: PasswordResetRequest, request: Request, session: Session = Depends(get_session)):
+    """Inicia o fluxo de reset enviando o e-mail com token."""
     email_normalizado = dados.email.strip().lower()
+    
+    # Captura metadados para o log
+    ip = request.client.host
+    ua = request.headers.get("user-agent")
+
     user = session.exec(select(User).where(User.email == email_normalizado)).first()
     
     if not user:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+        # Registra tentativa falha (usuário inexistente)
+        log = PasswordResetLog(email=email_normalizado, action="request", status="user_not_found", ip_address=ip, user_agent=ua)
+        session.add(log)
+        session.commit()
+        
+        # Por segurança, não informamos se o e-mail existe ou não
+        return {"status": "sucesso", "mensagem": "Se o e-mail existir, um link de recuperação foi enviado."}
     
-    user.password = dados.new_password
+    token = create_password_reset_token(email_normalizado)
+    reset_link = f"https://marombai.app/reset-password/confirm?token={token}"
+    
+    html = f"<p>Olá {user.nome},</p><p>Clique no link abaixo para resetar sua senha:</p><a href='{reset_link}'>{reset_link}</a>"
+    await send_sendgrid_email(email_normalizado, "Recuperação de Senha - MarombAI", html)
+    
+    # Registra sucesso na solicitação
+    log = PasswordResetLog(email=email_normalizado, action="request", status="success", ip_address=ip, user_agent=ua)
+    session.add(log)
+    session.commit()
+
+    return {"status": "sucesso", "mensagem": "E-mail de recuperação enviado."}
+
+@app.post("/reset-password/confirm")
+def confirm_password_reset(dados: PasswordResetConfirmRequest, request: Request, session: Session = Depends(get_session)):
+    """Valida o token e define a nova senha."""
+    ip = request.client.host
+    ua = request.headers.get("user-agent")
+    email_log = "unknown"
+
+    try:
+        payload = jwt.decode(dados.token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("purpose") != "password_reset":
+            raise HTTPException(status_code=400, detail="Token inválido para esta operação")
+        email = payload.get("sub")
+        email_log = email
+    except JWTError:
+        log = PasswordResetLog(email=email_log, action="confirm", status="failed", ip_address=ip, user_agent=ua)
+        session.add(log)
+        session.commit()
+        raise HTTPException(status_code=400, detail="Token expirado ou inválido")
+
+    user = session.exec(select(User).where(User.email == email)).first()
+    if not user:
+        log = PasswordResetLog(email=email_log, action="confirm", status="user_not_found", ip_address=ip, user_agent=ua)
+        session.add(log)
+        session.commit()
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    user.password = pwd_context.hash(dados.new_password)
+    
+    log = PasswordResetLog(email=email_log, action="confirm", status="success", ip_address=ip, user_agent=ua)
+    session.add(log)
+    
     session.add(user)
     session.commit()
-    
     return {"status": "sucesso", "mensagem": "Senha atualizada com sucesso!"}
 
 @app.put("/user/{user_id}/password")
@@ -232,25 +378,30 @@ def atualizar_senha(user_id: int, dados: ChangePasswordRequest, session: Session
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
     # Validação de segurança: a senha antiga deve estar correta
-    if user.password != dados.old_password:
+    if not pwd_context.verify(dados.old_password, user.password):
         raise HTTPException(status_code=400, detail="Senha atual incorreta")
     
-    user.password = dados.new_password
+    user.password = pwd_context.hash(dados.new_password)
     session.add(user)
     session.commit()
     
     return {"status": "sucesso", "mensagem": "Senha alterada com sucesso!"}
 
 @app.put("/user/{user_id}")
-def atualizar_perfil(user_id: int, dados: UserUpdate, session: Session = Depends(get_session)):
+def atualizar_perfil(user_id: int, dados: UserUpdate, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     """Atualiza dados básicos do perfil do usuário sem alterar o treino."""
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    
+    # Proteção contra IDOR: Usuário só pode editar a si mesmo
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Você não tem permissão para editar este perfil")
+
+    user = current_user
     update_data = dados.dict(exclude_unset=True)
+    
+    # Proteção contra Mass Assignment: Impede alteração de campos sensíveis
+    campos_bloqueados = ["id", "email", "role", "created_at"]
     for key, value in update_data.items():
-        setattr(user, key, value)
+        if key not in campos_bloqueados:
+            setattr(user, key, value)
     
     session.add(user)
     session.commit()
@@ -317,12 +468,17 @@ def get_user_evolution(user_id: int, session: Session = Depends(get_session)):
         } for log in logs
     ]
 
-@app.get("/user/{user_id}/dashboard")
-def get_user_dashboard(user_id: int, session: Session = Depends(get_session)):
-    user = session.get(User, user_id)
+# --- ROTA PROTEGIDA EXEMPLO ---
+
+@app.get("/user/dashboard/me")
+def get_user_dashboard(
+    current_user: User = Depends(get_current_user), 
+    session: Session = Depends(get_session)
+):
+    user = current_user
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    
+    user_id = user.id
     ultimo_treino = session.exec(select(WorkoutPlan).where(WorkoutPlan.user_id == user_id).order_by(WorkoutPlan.created_at.desc())).first()
     ultima_dieta = session.exec(select(DietPlan).where(DietPlan.user_id == user_id).order_by(DietPlan.created_at.desc())).first()
 
@@ -354,7 +510,7 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
         usuario_existente.local = perfil.local
         usuario_existente.dieta = perfil.dieta
         usuario_existente.lesoes = json.dumps(perfil.lesoes)
-        usuario_existente.password = perfil.password
+        usuario_existente.password = pwd_context.hash(perfil.password)
         novo_usuario = usuario_existente
         try:
             session.add(novo_usuario)
@@ -369,7 +525,7 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
         novo_usuario = User(
             nome=perfil.nome,
             email=email_normalizado,
-            password=perfil.password,
+            password=pwd_context.hash(perfil.password),
             idade=perfil.idade,
             peso=perfil.peso,
             altura=perfil.altura,

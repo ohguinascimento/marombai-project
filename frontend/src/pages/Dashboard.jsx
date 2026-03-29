@@ -6,8 +6,7 @@ import {
   Brain, RefreshCw, LogOut, Settings
 } from 'lucide-react';
 import { Coffee } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL;
+import api from '../api/api';
 
 export default function Dashboard({ data }) {
   const location = useLocation();
@@ -28,16 +27,13 @@ export default function Dashboard({ data }) {
   // Efeito para buscar dados se o usuário deu F5 ou veio do Login
   useEffect(() => {
     const fetchData = async () => {
-      if (!treino && userId) {
+      if (!treino) {
         try {
-          const response = await fetch(`${API_URL}/user/${userId}/dashboard`);
-          if (response.ok) {
-            const data = await response.json();
-            setTreino(data.treino);
-            setTreinoMeta(data.treino_meta);
-            setUserProfile(data.user); // Perfil básico
-            // Se quiser carregar a dieta também, pode setar aqui
-          }
+          // Usamos a rota '/me' para o backend identificar o usuário pelo Token
+          const { data } = await api.get('/user/dashboard/me');
+          setTreino(data.treino);
+          setTreinoMeta(data.treino_meta);
+          setUserProfile(data.user);
         } catch (error) {
           console.error("Erro ao buscar dados do dashboard:", error);
         } finally {
@@ -68,24 +64,17 @@ export default function Dashboard({ data }) {
   const handleSave = async () => {
     console.log("💾 Salvando alterações no banco para o ID:", treinoMeta?.id);
     try {
-      const response = await fetch(`${API_URL}/workout/${treinoMeta.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          exercicios: editTreino,
-          titulo: treino.titulo || treinoMeta.titulo,
-          foco: treino.foco || treinoMeta.foco,
-          nivel_dificuldade: treino.intensidade || treinoMeta.nivel_dificuldade,
-          ai_insight: treino.ai_insight || treinoMeta.ai_insight
-        }),
+      const response = await api.put(`/workout/${treinoMeta.id}`, {
+        exercicios: editTreino,
+        titulo: treino.titulo || treinoMeta.titulo,
+        foco: treino.foco || treinoMeta.foco,
+        nivel_dificuldade: treino.intensidade || treinoMeta.nivel_dificuldade,
+        ai_insight: treino.ai_insight || treinoMeta.ai_insight
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        setTreino({ ...treino, exercicios: result.treino });
-        setIsEditing(false);
-        console.log("✅ Treino atualizado com sucesso!");
-      }
+      setTreino({ ...treino, exercicios: response.data.treino });
+      setIsEditing(false);
+      console.log("✅ Treino atualizado com sucesso!");
     } catch (error) {
       console.error("❌ Erro ao salvar treino:", error);
     }
@@ -140,22 +129,11 @@ export default function Dashboard({ data }) {
     };
 
     try {
-      const response = await fetch(`${API_URL}/gerar-dieta`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dietPayload),
-      });
-
-      const dietData = await response.json();
-
-      if (response.ok) {
-        navigate('/dieta', { state: { dietData: dietData.dieta } });
-      } else {
-        throw new Error(dietData.detail || "Falha ao gerar dieta.");
-      }
+      const { data } = await api.post('/gerar-dieta', dietPayload);
+      navigate('/dieta', { state: { dietData: data.dieta } });
     } catch (error) {
       console.error("Erro ao gerar dieta:", error);
-      alert(`Erro: ${error.message}`);
+      alert(`Erro: ${error.response?.data?.detail || "Falha ao gerar dieta."}`);
     } finally {
       setIsDietLoading(false);
     }

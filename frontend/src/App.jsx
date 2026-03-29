@@ -10,6 +10,9 @@ import EvolutionPage from './pages/EvolutionPage'; // <--- IMPORTAR A PAGINA DE 
 import Login from './pages/Login';
 import WorkoutExecution from './pages/WorkoutExecution';
 import SettingsPage from './pages/SettingsPage';
+import ResetPasswordConfirm from './pages/ResetPasswordConfirm';
+import AdminSecurityLogs from './pages/AdminSecurityLogs';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   // DEBUG: Se isso não aparecer no console (F12), o código não atualizou!
@@ -20,15 +23,25 @@ function App() {
       <Routes>
         <Route path="/" element={<Onboarding />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} /> {/* <--- Nova Rota */}
-        <Route path="/workout-execution" element={<WorkoutExecution />} />
-        <Route path="/configuracoes" element={<SettingsPage />} />
-        <Route path="/admin" element={<AdminUsers />} /> {/* <--- ADICIONE ESTA LINHA */}
-        <Route path="/treinos" element={<AdminWorkouts />} /> {/* <--- NOVA ROTA */}
-        <Route path="/dietas" element={<AdminDiets />} />
-        <Route path="/dieta" element={<DietPage />} />
-        <Route path="/diario" element={<DiaryPage />} /> {/* <--- NOVA ROTA DIARIO */}
-        <Route path="/evolucao" element={<EvolutionPage />} /> {/* <--- NOVA ROTA EVOLUCAO */}
+        <Route path="/reset-password/confirm" element={<ResetPasswordConfirm />} />
+
+        {/* Grupo de Rotas Protegidas */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/workout-execution" element={<WorkoutExecution />} />
+          <Route path="/configuracoes" element={<SettingsPage />} />
+          <Route path="/dieta" element={<DietPage />} />
+          <Route path="/diario" element={<DiaryPage />} />
+          <Route path="/evolucao" element={<EvolutionPage />} />
+        </Route>
+
+        {/* Rotas Exclusivas de Admin */}
+        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          <Route path="/admin" element={<AdminUsers />} />
+          <Route path="/treinos" element={<AdminWorkouts />} />
+          <Route path="/dietas" element={<AdminDiets />} />
+          <Route path="/admin/logs" element={<AdminSecurityLogs />} />
+        </Route>
         
         {/* Rota Coringa (*) para capturar páginas não encontradas */}
         <Route path="*" element={
