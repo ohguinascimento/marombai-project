@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Activity, TrendingUp, Calendar, Clock, Zap, Trophy } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function EvolutionPage() {
   const navigate = useNavigate();
   const userId = localStorage.getItem('marombai_user_id');
@@ -11,7 +13,7 @@ export default function EvolutionPage() {
   useEffect(() => {
     const fetchEvolution = async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/user/${userId}/evolution`);
+        const response = await fetch(`${API_URL}/user/${userId}/evolution`);
         if (response.ok) {
           const data = await response.json();
           setLogs(data);

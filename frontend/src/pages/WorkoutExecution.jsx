@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, CheckCircle2, Clock, Zap, Timer, Star } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function WorkoutExecution() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -97,7 +99,7 @@ export default function WorkoutExecution() {
     };
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/workout/finish', {
+      const response = await fetch(`${API_URL}/workout/finish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

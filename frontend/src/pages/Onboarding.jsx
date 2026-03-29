@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { ChevronRight, ChevronLeft, Dumbbell, Activity, Apple, Scale, Calendar, Brain, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -108,7 +110,7 @@ export default function Onboarding() {
       
       // Executa a requisição e o delay em paralelo
       const [response] = await Promise.all([
-        fetch('http://127.0.0.1:8000/gerar-treino', {
+        fetch(`${API_URL}/gerar-treino`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

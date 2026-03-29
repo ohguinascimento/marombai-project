@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, User, Volume2, VolumeX, Save, LogOut, Bell, Lock, RefreshCcw, Eye, EyeOff } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function SettingsPage() {
   const navigate = useNavigate();
   const userId = localStorage.getItem('marombai_user_id');
@@ -39,7 +41,7 @@ export default function SettingsPage() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/user/${userId}/dashboard`);
+        const response = await fetch(`${API_URL}/user/${userId}/dashboard`);
         if (response.ok) {
           const data = await response.json();
           setProfile({
@@ -67,7 +69,7 @@ export default function SettingsPage() {
       localStorage.setItem('marombai_user_nome', profile.nome);
 
       // 2. Salva dados no Backend
-      const response = await fetch(`http://127.0.0.1:8000/user/${userId}`, {
+      const response = await fetch(`${API_URL}/user/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(profile),
@@ -96,7 +98,7 @@ export default function SettingsPage() {
 
     setChangingPassword(true);
     try {
-      const response = await fetch(`http://127.0.0.1:8000/user/${userId}/password`, {
+      const response = await fetch(`${API_URL}/user/${userId}/password`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
