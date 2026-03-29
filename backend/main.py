@@ -284,10 +284,10 @@ def finalizar_treino(dados: WorkoutLogCreate, session: Session = Depends(get_ses
     """Registra a conclusão de uma sessão de treino."""
     try:
         novo_log = WorkoutLog(
-            user_id=dados.user_id,
-            workout_plan_id=dados.workout_plan_id,
+            user_id=int(dados.user_id),
+            workout_plan_id=int(dados.workout_plan_id),
             duracao_minutos=dados.duracao_minutos,
-            esforco_percebido=dados.esforco_percebido,
+            esforco_percebido=int(dados.esforco_percebido),
             detalhes_json=json.dumps(dados.detalhes_exercicios)
         )
         session.add(novo_log)
@@ -297,6 +297,23 @@ def finalizar_treino(dados: WorkoutLogCreate, session: Session = Depends(get_ses
         session.rollback()
         print(f"❌ Erro ao salvar log de treino: {e}")
         raise HTTPException(status_code=500, detail="Erro ao salvar histórico de treino.")
+
+@app.get("/user/{user_id}/evolution")
+def get_user_evolution(user_id: int, session: Session = Depends(get_session)):
+    """Busca o histórico de treinos para mostrar a evolução."""
+    statement = select(WorkoutLog).where(WorkoutLog.user_id == user_id).order_by(WorkoutLog.data_realizacao.asc())
+    logs = session.exec(statement).all()
+
+    return [
+        {
+            "id": log.id,
+            "data": log.data_realizacao.strftime("%d/%m"),
+            "duracao": log.duracao_minutos,
+            "esforco": log.esforco_percebido,
+            "observacoes": log.observacoes,
+            "exercicios": json.loads(log.detalhes_json) if log.detalhes_json else []
+        } for log in logs
+    ]
 
 @app.get("/user/{user_id}/dashboard")
 def get_user_dashboard(user_id: int, session: Session = Depends(get_session)):
@@ -420,6 +437,7 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
     if not treino_gerado:
         raise HTTPException(status_code=502, detail="A IA retornou uma resposta vazia.")
 
+    novo_plano = None
     if treino_gerado and isinstance(treino_gerado, dict):
         exercicios_json_str = json.dumps(treino_gerado.get("exercicios", []))
 
@@ -441,7 +459,7 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
         "status": "sucesso",
         "mensagem": "Treino salvo e gerado com sucesso!",
         "user_id": novo_usuario.id,
-        "treino_id": novo_plano.id if treino_gerado else None,
+        "treino_id": novo_plano.id if novo_plano else None,
         "treino": treino_gerado
     }
 

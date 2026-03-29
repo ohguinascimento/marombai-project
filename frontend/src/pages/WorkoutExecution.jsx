@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, CheckCircle2, Clock, Zap, Timer } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Clock, Zap, Timer, Star } from 'lucide-react';
 
 export default function WorkoutExecution() {
   const location = useLocation();
@@ -13,6 +13,8 @@ export default function WorkoutExecution() {
   const [completedExercises, setCompletedExercises] = useState([]);
 
   const [isResting, setIsResting] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [esforco, setEsforco] = useState(7);
   const [restTime, setRestTime] = useState(0);
 
   // Carrega a preferência de som (padrão é true)
@@ -90,7 +92,7 @@ export default function WorkoutExecution() {
       user_id: userId,
       workout_plan_id: treinoId,
       duracao_minutos: duracao,
-      esforco_percebido: 8, // Poderia ser um slider no final
+      esforco_percebido: esforco,
       detalhes_exercicios: exercicios // Aqui salvaríamos as cargas reais se tivéssemos inputs
     };
 
@@ -109,6 +111,53 @@ export default function WorkoutExecution() {
       console.error("Erro ao finalizar treino:", error);
     }
   };
+
+  if (isFinishing) {
+    return (
+      <div className="min-h-screen bg-black text-white p-6 flex flex-col items-center justify-center font-sans animate-fade-in">
+        <div className="text-neon-green mb-6">
+          <CheckCircle2 size={80} />
+        </div>
+        <h2 className="text-3xl font-black uppercase italic mb-2">Treino Concluído!</h2>
+        <p className="text-gray-400 text-center mb-10">Como você avalia a intensidade de hoje?</p>
+        
+        <div className="w-full max-w-xs space-y-6">
+          <div className="flex justify-between text-neon-green font-black text-4xl font-mono">
+            <span>{esforco}</span>
+            <span className="text-xs text-gray-500 self-end mb-2 uppercase">Escala de Esforço</span>
+          </div>
+          
+          <input 
+            type="range" min="1" max="10" step="1"
+            value={esforco}
+            onChange={(e) => setEsforco(parseInt(e.target.value))}
+            className="w-full h-3 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-neon-green"
+          />
+          
+          <div className="flex justify-between text-[10px] text-gray-600 font-bold uppercase">
+            <span>Leve</span>
+            <span>Moderado</span>
+            <span>Insano</span>
+          </div>
+        </div>
+
+        <div className="mt-12 w-full max-w-xs space-y-3">
+          <button 
+            onClick={handleFinish}
+            className="w-full bg-neon-green text-black font-bold py-5 rounded-2xl shadow-[0_0_30px_rgba(0,255,148,0.2)]"
+          >
+            CONFIRMAR E SALVAR
+          </button>
+          <button 
+            onClick={() => setIsFinishing(false)}
+            className="w-full text-gray-500 text-xs font-bold py-2 uppercase tracking-widest"
+          >
+            Voltar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isResting) {
     const nextEx = exercicios[currentIndex + 1];
@@ -200,7 +249,7 @@ export default function WorkoutExecution() {
           </button>
         ) : (
           <button 
-            onClick={handleFinish}
+            onClick={() => setIsFinishing(true)}
             className="flex-[2] bg-neon-green text-black font-bold py-5 rounded-2xl shadow-[0_0_30px_rgba(0,255,148,0.4)]"
           >
             FINALIZAR TREINO

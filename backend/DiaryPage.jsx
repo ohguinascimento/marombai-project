@@ -15,7 +15,7 @@ export default function DiaryPage() {
         if (response.ok) {
           const data = await response.json();
           // Ordenamos do mais recente para o mais antigo para o Diário
-          setLogs([...data].reverse());
+          setLogs(data.reverse());
         }
       } catch (error) {
         console.error("Erro ao buscar diário:", error);
@@ -24,11 +24,7 @@ export default function DiaryPage() {
       }
     };
 
-    if (userId) {
-      fetchLogs();
-    } else {
-      setLoading(false);
-    }
+    if (userId) fetchLogs();
   }, [userId]);
 
   if (loading) return (
