@@ -24,9 +24,9 @@ services:
     container_name: marombai_db
     restart: always
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password123
-      POSTGRES_DB: marombai_db
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-marombai_db}
     ports:
       - "5432:5432"
     volumes:
@@ -45,7 +45,7 @@ services:
     environment:
       WEBHOOK_URL: "http://n8n:5678/webhook-test/gerar-treino"
       WEBHOOK_URL_DIETA: "http://n8n:5678/webhook/gerar-dieta"
-      DATABASE_URL: "postgresql://admin:password123@db:5432/marombai_db"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-marombai_db}"
       ALLOWED_ORIGINS: "https://marombai.app,https://api.marombai.app,http://localhost:5173"
     volumes:
       - ./logs:/app/logs

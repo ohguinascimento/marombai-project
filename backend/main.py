@@ -560,7 +560,7 @@ def finalizar_treino(dados: WorkoutLogCreate, current_user: User = Depends(get_c
         return {"status": "sucesso", "log_id": novo_log.id}
     except Exception as e:
         session.rollback()
-        print(f"❌ Erro ao salvar log de treino: {e}")
+        logger.error(f"Erro ao salvar log de treino: {e}")
         raise HTTPException(status_code=500, detail="Erro ao salvar histórico de treino.")
 
 @app.get("/user/{user_id}/evolution", tags=["Usuário"], dependencies=[Depends(get_current_user)])
