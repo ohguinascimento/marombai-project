@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Play, Clock, Zap, Star, MoreHorizontal, 
   Home, Calendar, Activity, Utensils, User, 
-  Brain, RefreshCw, LogOut
+  Brain, RefreshCw, LogOut, Settings
 } from 'lucide-react';
 import { Coffee } from 'lucide-react';
 
@@ -190,6 +190,15 @@ export default function Dashboard({ data }) {
                   <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Conta</p>
                   <p className="text-sm font-bold truncate text-white">{userProfile?.nome || "Maromba"}</p>
                 </div>
+                
+                <button 
+                  onClick={() => navigate('/configuracoes')}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-800 hover:text-neon-green transition-colors border-b border-gray-800"
+                >
+                  <Settings size={16} />
+                  Configurações
+                </button>
+
                 <button 
                   onClick={handleLogout}
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-800 hover:text-red-400 transition-colors"
@@ -322,7 +331,16 @@ export default function Dashboard({ data }) {
 
       {/* Botão Flutuante Gigante (Iniciar Treino) */}
       <div className="fixed bottom-24 left-0 w-full px-6 z-20">
-        <button className="w-full bg-neon-green text-black font-bold text-lg py-4 rounded-2xl shadow-[0_0_20px_rgba(0,255,148,0.4)] hover:shadow-[0_0_30px_rgba(0,255,148,0.6)] hover:scale-[1.02] transition-all flex items-center justify-center gap-2">
+        <button 
+          onClick={() => navigate('/workout-execution', { 
+            state: { 
+              treino, 
+              treinoId: treinoMeta?.id, 
+              userId 
+            } 
+          })}
+          className="w-full bg-neon-green text-black font-bold text-lg py-4 rounded-2xl shadow-[0_0_20px_rgba(0,255,148,0.4)] hover:shadow-[0_0_30px_rgba(0,255,148,0.6)] hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+        >
           INICIAR TREINO <Zap size={20} fill="black" />
         </button>
       </div>
