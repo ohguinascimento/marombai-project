@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { Coffee } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function Dashboard({ data }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -28,7 +30,7 @@ export default function Dashboard({ data }) {
     const fetchData = async () => {
       if (!treino && userId) {
         try {
-          const response = await fetch(`http://127.0.0.1:8000/user/${userId}/dashboard`);
+          const response = await fetch(`${API_URL}/user/${userId}/dashboard`);
           if (response.ok) {
             const data = await response.json();
             setTreino(data.treino);
@@ -66,7 +68,7 @@ export default function Dashboard({ data }) {
   const handleSave = async () => {
     console.log("💾 Salvando alterações no banco para o ID:", treinoMeta?.id);
     try {
-      const response = await fetch(`http://127.0.0.1:8000/workout/${treinoMeta.id}`, {
+      const response = await fetch(`${API_URL}/workout/${treinoMeta.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -138,7 +140,7 @@ export default function Dashboard({ data }) {
     };
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/gerar-dieta', {
+      const response = await fetch(`${API_URL}/gerar-dieta`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dietPayload),

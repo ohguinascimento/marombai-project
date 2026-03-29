@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, ArrowRight, RefreshCcw } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -14,7 +16,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const url = isResetting ? 'http://127.0.0.1:8000/reset-password' : 'http://127.0.0.1:8000/login';
+      const url = isResetting ? `${API_URL}/reset-password` : `${API_URL}/login`;
       const payload = isResetting 
         ? { email: email.trim().toLowerCase(), new_password: password }
         : { email: email.trim().toLowerCase(), password };
