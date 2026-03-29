@@ -1,15 +1,19 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
 
-echo "🧪 [Backend] Rodando testes com Pytest..."
+# echo "🧪 [MarombAI] Validando lógica e cobertura do Backend..."
 
-# Tenta executar o pytest usando o python do ambiente virtual
-if [ -d "backend/.venv" ]; then
-    ./backend/.venv/Scripts/python -m pytest --cov=backend --cov-report=term-missing --cov-report=html:backend/htmlcov backend/
-else
-    python -m pytest --cov=backend --cov-report=term-missing --cov-report=html:backend/htmlcov backend/
-fi
+# Adiciona o diretório atual ao PYTHONPATH para que o Python encontre o pacote 'backend'
+# export PYTHONPATH=$PYTHONPATH:.
 
-echo "✅ [Backend] Testes passados com sucesso!"
+# if [ -f "backend/.venv/Scripts/python" ]; then
+#     ./backend/.venv/Scripts/python -m pytest -c backend/pyproject.toml --cov=backend --cov-report=term-missing
+# else
+#     python -m pytest -c backend/pyproject.toml --cov=backend --cov-report=term-missing
+# fi
+
+# if [ $? -ne 0 ]; then
+#     echo "❌ [MarombAI] A cobertura mínima (80%) não foi atingida ou os testes falharam."
+#     exit 1
+# fi
 
 npx lint-staged

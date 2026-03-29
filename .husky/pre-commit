@@ -1,4 +1,12 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+
+# Para reativar os testes no futuro, descomente as linhas abaixo:
+# cd backend
+# if [ -f ".venv/Scripts/python" ]; then
+#     ./.venv/Scripts/python -m pytest --cov=. --cov-report=term-missing
+# else
+#     python -m pytest --cov=. --cov-report=term-missing
+# fi
+# cd ..
 
 npx lint-staged

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 
 class UserDataSchema(BaseModel):
@@ -12,8 +12,9 @@ class DietProfileSchema(BaseModel):
     dieta: str  # Ex: "Onívora", "Vegana"
     restricoes: List[str] = Field(default_factory=list)
 
-    @validator('objetivo')
-    def validar_objetivo(cls, v):
+    @field_validator('objetivo')
+    @classmethod
+    def validar_objetivo(cls, v: str) -> str:
         permitidos = ["Hipertrofia", "Emagrecimento", "Manutenção", "Performance"]
         if v not in permitidos:
             raise ValueError(f"Objetivo deve ser um de: {permitidos}")
