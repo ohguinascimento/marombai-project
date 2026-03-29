@@ -1,23 +1,21 @@
-# frontend/Dockerfile
-
-# 1. Usar Node.js
-FROM node:22-alpine
-
-# 2. Pasta de trabalho
+# --- ESTÁGIO 1: Build ---
+FROM node:20-alpine AS build-stage
 WORKDIR /app
 
-# 3. Copia os arquivos de dependências
-COPY package.json package-lock.json ./
-
-# 4. Instala as dependências
+# Copia apenas os arquivos de dependências primeiro para aproveitar o cache do Docker
+COPY package*.json ./
 RUN npm install
 
-# 5. Copia o resto do código
+# Copia o restante do código e gera o build de produção
 COPY . .
+RUN npm run build
 
-# 6. Expõe a porta do Vite
-EXPOSE 5173
+# --- ESTÁGIO 2: Produção ---
+# Usamos Nginx para servir os arquivos estáticos de forma ultra-rápida
+FROM nginx:stable-alpine AS production-stage
 
-# 7. Roda em modo desenvolvimento (para o Alpha é mais fácil agora)
-# Em produção real faríamos o "build", mas vamos simplificar
-CMD ["npm", "run", "dev", "--", "--host"]
+# Copia os arquivos compilados do estágio anterior
+COPY --from=build-stage /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

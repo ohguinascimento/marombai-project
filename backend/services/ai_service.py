@@ -1,16 +1,21 @@
-import os
 import json
 import httpx
 from typing import Optional, Dict, Any
 from loguru import logger
 from fastapi import HTTPException
+from config import settings
+from schemas.ai_schemas import UserDataSchema, DietProfileSchema, WorkoutProfileSchema
 
 class AIService:
     def __init__(self):
-        self.user = os.getenv("N8N_USER", "admin")
-        self.password = os.getenv("N8N_PASSWORD", "marombai_n8n_secure")
-        self.url_treino = os.getenv("WEBHOOK_URL", "http://n8n:5678/webhook-test/gerar-treino")
-        self.url_dieta = os.getenv("WEBHOOK_URL_DIETA", "http://n8n:5678/webhook/gerar-dieta")
+        """
+        Inicializa o serviço de IA. 
+        As validações de credenciais agora são feitas globalmente no config.py.
+        """
+        self.user = settings.N8N_USER
+        self.password = settings.N8N_PASSWORD
+        self.url_treino = settings.WEBHOOK_URL_TREINO
+        self.url_dieta = settings.WEBHOOK_URL_DIETA
         self.timeout = 60.0
 
     def _make_json_serializable(self, data: Any) -> Any:
@@ -27,6 +32,7 @@ class AIService:
         """Método privado para realizar as chamadas HTTP assíncronas."""
         # Garante que o payload não tenha objetos que quebrem o JSON (como datetime)
         safe_payload = self._make_json_serializable(payload)
+        
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
@@ -37,7 +43,7 @@ class AIService:
                 )
                 
                 if response.status_code != 200:
-                    logger.error(f"❌ Erro na resposta do n8n: {response.status_code} - {response.text}")
+                    logger.error(f"❌ n8n retornou erro {response.status_code}")
                     return None
                 
                 return response.json()
@@ -53,29 +59,36 @@ class AIService:
             
         if isinstance(content, str):
             try:
-                # Remove blocos de código markdown se existirem
-                clean_json = content.replace("```json", "").replace("```", "").strip()
-                return json.loads(clean_json)
+                # Regex ou substituição mais agressiva para limpar markdown da IA
+                import re
+                json_match = re.search(r'(\{.*\}|\[.*\])', content, re.DOTALL)
+                return json.loads(json_match.group(0)) if json_match else None
             except json.JSONDecodeError:
                 logger.error(f"❌ Falha ao parsear JSON da IA na chave {key}")
                 return None
         
         return content
 
-    async def generate_workout(self, nome: str, perfil: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def generate_workout(self, user: UserDataSchema, perfil: WorkoutProfileSchema) -> Optional[Dict[str, Any]]:
         """Orquestra a geração de treino via n8n."""
-        logger.info(f"📡 Solicitando inteligência de treino para: {nome}")
-        payload = {"nome": nome, "perfil": perfil}
+        logger.info(f"📡 Solicitando inteligência de treino para: {user.nome}")
+        payload = {
+            "user": user.model_dump(mode='json'),
+            "perfil_treino": perfil.model_dump(mode='json')
+        }
         
         res = await self._post_request(self.url_treino, payload)
         if res:
             return self._parse_ai_json(res, "treino")
         return None
 
-    async def generate_diet(self, user_data: Dict[str, Any], diet_profile: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def generate_diet(self, user: UserDataSchema, diet_profile: DietProfileSchema) -> Optional[Dict[str, Any]]:
         """Orquestra a geração de dieta via n8n."""
-        logger.info(f"📡 Solicitando inteligência de dieta")
-        payload = {"user": user_data, "perfil_dieta": diet_profile}
+        logger.info(f"📡 Solicitando inteligência de dieta para: {user.nome}")
+        payload = {
+            "user": user.model_dump(mode='json'),
+            "perfil_dieta": diet_profile.model_dump(mode='json')
+        }
         
         res = await self._post_request(self.url_dieta, payload)
         if res:

@@ -43,10 +43,15 @@ services:
       - db
       - n8n
     environment:
-      WEBHOOK_URL: "http://n8n:5678/webhook-test/gerar-treino"
-      WEBHOOK_URL_DIETA: "http://n8n:5678/webhook/gerar-dieta"
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-marombai_db}"
-      ALLOWED_ORIGINS: "https://marombai.app,https://api.marombai.app,http://localhost:5173"
+      ENV: ${ENV:-development}
+      DEBUG: ${DEBUG:-true}
+      SECRET_KEY: ${SECRET_KEY}
+      N8N_USER: ${N8N_USER}
+      N8N_PASSWORD: ${N8N_PASSWORD}
+      WEBHOOK_URL: ${WEBHOOK_URL_TREINO}
+      WEBHOOK_URL_DIETA: ${WEBHOOK_URL_DIETA}
+      DATABASE_URL: ${DATABASE_URL}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
     volumes:
       - ./logs:/app/logs
 
@@ -55,11 +60,9 @@ services:
     build: ./frontend
     container_name: marombai_frontend
     restart: always
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+    # Em produção, não precisamos expor a porta 5173 nem montar volumes de código
+    expose:
+      - "80"
     depends_on:
       - backend
 
@@ -72,8 +75,8 @@ services:
       - "5678:5678"
     environment:
       - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=marombai_n8n_secure
+      - N8N_BASIC_AUTH_USER=${N8N_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD}
       - N8N_SECURE_COOKIE=false
     volumes:
       - n8n_data:/home/node/.n8n

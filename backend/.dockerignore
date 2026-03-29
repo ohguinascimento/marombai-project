@@ -1,0 +1,7 @@
+# Ignorar arquivos de documentação dentro da pasta backend
+*.md
+VULNERABILIDADE.md
+tests/
+
+# Cache de python
+__pycache__/

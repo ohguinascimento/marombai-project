@@ -1,0 +1,41 @@
+site_name: MarombAI Docs 🏋️‍♂️
+site_description: Documentação técnica do ecossistema MarombAI
+site_author: Guilherme & Gemini Code Assist
+
+theme:
+  name: material
+  language: pt-BR
+  palette:
+    - scheme: slate  # Dark mode para combinar com o app
+      primary: green
+      accent: green
+  features:
+    - navigation.sections
+    - content.code.copy
+
+docs_dir: Doc  # Aponta para a sua pasta personalizada
+
+hooks:
+  - scripts/seguranca.py
+
+nav:
+  - Início: index.md
+  - Arquitetura:
+    - Fluxo de Dados: arquitetura.md
+    - Refatoração: RESUMO_ATUALIZACOES_ARQUITETURA.md
+  - Segurança:
+    - Score em Tempo Real: security_score.md
+    - Relatórios Manuais: seguranca.md
+    - Implementações: implementacao_seguranca.md
+    - Vulnerabilidades: VULNERABILIDADES_DESENVOLVIMENTO.md
+  - Operação:
+    - Guia de Deploy: DEPLOY_HOSTINGER.md
+    - Status do Projeto: STATUS_ATUAL_PROJETO.md
+  - Changelog: ALTERACOES.md
+
+markdown_extensions:
+  - pymdownx.superfences:  # Necessário para renderizar o diagrama Mermaid em arquitetura.md
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format

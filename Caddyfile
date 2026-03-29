@@ -1,20 +1,46 @@
+# Opções Globais
+{
+    # Email para avisos de expiração do Let's Encrypt (opcional, mas recomendado)
+    email seu-email@exemplo.com
+}
+
+# Snippet reutilizável para segurança e performance
+(common) {
+    encode zstd gzip
+    header {
+        # Adiciona suporte para certificados locais auto-assinados em dev
+        tls internal
+        # HSTS (Strict-Transport-Security) - Força HTTPS por 1 ano
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Previne ataques de sniffing de MIME
+        X-Content-Type-Options "nosniff"
+        # Proteção contra Clickjacking
+        X-Frame-Options "SAMEORIGIN"
+        # Política de Referrer
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Remove o header que identifica o servidor por segurança
+        -Server
+    }
+}
+
 # Frontend (Site Principal)
 marombai.app {
-    reverse_proxy frontend:5173
+    import common
+    reverse_proxy frontend:80
 }
 
 www.marombai.app {
-    redir https://marombai.app{uri}
+    redir https://marombai.app{uri} permanent
 }
 
 # Backend (API)
-# Importante: Crie o subdomínio 'api' no Name.com apontando para o IP da VPS
 api.marombai.app {
+    import common
     reverse_proxy backend:8000
 }
 
 # n8n (Fluxos)
-# Importante: Crie o subdomínio 'n8n' no Name.com apontando para o IP da VPS
 n8n.marombai.app {
+    import common
     reverse_proxy n8n:5678
 }

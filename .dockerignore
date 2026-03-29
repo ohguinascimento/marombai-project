@@ -1,0 +1,11 @@
+# Documentação e Scripts
+Doc/
+scripts/
+mkdocs.yml
+*.md
+
+# Ambientes virtuais e cache
+.venv/
+venv/
+__pycache__/
+.git/

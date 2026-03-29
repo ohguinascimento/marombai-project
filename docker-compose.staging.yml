@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  caddy:
+    ports:
+      - "8080:80"   # Acessível via http://localhost:8080
+      - "8443:443"
+  
+  backend:
+    restart: always # Garante que o backend sempre suba em staging/prod

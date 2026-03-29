@@ -13,6 +13,7 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 # --- ARQUIVOS LOCAIS ---
 from backend.database import init_db
 from backend.routers import auth
+from config import settings
 from backend.routers import workouts
 from backend.routers import users
 from backend.routers import admin
@@ -42,15 +43,15 @@ app = FastAPI(
     description="Plataforma de gestão de treinos e dietas baseada em IA.",
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc"
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
+    openapi_url="/openapi.json" if settings.DEBUG else None
 )
 
 # --- CONFIGURAÇÃO DO CORS ---
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
