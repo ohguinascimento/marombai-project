@@ -11,8 +11,13 @@ class User(SQLModel, table=True):
     idade: int
     peso: float
     altura: int
+    genero: str = "masculino"
+    frequencia: int = 3
+    local: str = "academia"
     objetivo: str
     nivel: str
+    dieta: Optional[str] = "onivoro"
+    lesoes: Optional[str] = "[]" # Salvaremos como string JSON
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     # Relação: Um usuário pode ter vários treinos

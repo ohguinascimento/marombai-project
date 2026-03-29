@@ -30,6 +30,72 @@ class UserCreate(BaseModel):
     local: str
     dieta: str
     suplementos: List[str] = []
+    exercicios: List[dict] = []
+
+class UserUpdate(BaseModel):
+    nome: Optional[str] = None
+    idade: Optional[int] = None
+    peso: Optional[float] = None
+    altura: Optional[int] = None
+    objetivo: Optional[str] = None
+    nivel: Optional[str] = None
+    frequencia: Optional[int] = None
+    local: Optional[str] = None
+    dieta: Optional[str] = None
+
+class WorkoutUpdate(BaseModel):
+    titulo: Optional[str] = None
+    foco: Optional[str] = None
+    nivel_dificuldade: Optional[str] = None
+    ai_insight: Optional[str] = None
+    exercicios: List[dict]
+
+class PasswordResetRequest(BaseModel):
+    email: str
+    new_password: str
+
+# --- Biblioteca de Treinos Pré-cadastrados (Templates) ---
+TREINOS_TEMPLATES = [
+    {
+        "id": 1,
+        "titulo": "Adaptação Full Body",
+        "foco": "Corpo Inteiro",
+        "intensidade": "Iniciante",
+        "ai_insight": "Foco em técnica e adaptação neuromuscular para quem está começando.",
+        "exercicios": [
+            {"nome": "Leg Press 45", "series": "3x15", "carga": "Leve", "descanso": "60s"},
+            {"nome": "Puxada Alta", "series": "3x15", "carga": "Leve", "descanso": "60s"},
+            {"nome": "Supino Máquina", "series": "3x15", "carga": "Leve", "descanso": "60s"},
+            {"nome": "Abdominal Supra", "series": "3x20", "carga": "Peso Corporal", "descanso": "45s"}
+        ]
+    },
+    {
+        "id": 2,
+        "titulo": "Push (Empurrar) - Hipertrofia",
+        "foco": "Peito, Ombro e Tríceps",
+        "intensidade": "Intermediário",
+        "ai_insight": "Foco em exercícios de empurrar com cadência controlada.",
+        "exercicios": [
+            {"nome": "Supino Inclinado Halter", "series": "4x10", "carga": "Moderada", "descanso": "90s"},
+            {"nome": "Desenvolvimento Militar", "series": "3x10", "carga": "Moderada", "descanso": "90s"},
+            {"nome": "Tríceps Testa", "series": "3x12", "carga": "Moderada", "descanso": "60s"},
+            {"nome": "Elevação Lateral", "series": "4x15", "carga": "Leve", "descanso": "45s"}
+        ]
+    },
+    {
+        "id": 3,
+        "titulo": "Pull (Puxar) - Costas e Bíceps",
+        "foco": "Costas e Bíceps",
+        "intensidade": "Intermediário",
+        "ai_insight": "Trabalho focado em tração para densidade das costas.",
+        "exercicios": [
+            {"nome": "Remada Curvada", "series": "4x10", "carga": "Moderada", "descanso": "90s"},
+            {"nome": "Puxada Aberta", "series": "3x12", "carga": "Moderada", "descanso": "60s"},
+            {"nome": "Rosca Direta W", "series": "3x10", "carga": "Moderada", "descanso": "60s"},
+            {"nome": "Crucifixo Inverso", "series": "3x15", "carga": "Leve", "descanso": "45s"}
+        ]
+    }
+]
 
 class DietRequest(BaseModel):
     user_id: int
@@ -66,6 +132,34 @@ app.add_middleware(
 def read_root():
     return {"message": "MarombAI Backend Operacional 🚀"}
 
+@app.get("/treinos/templates")
+def listar_templates():
+    """Retorna a biblioteca de treinos pré-definidos."""
+    return TREINOS_TEMPLATES
+
+@app.post("/user/{user_id}/selecionar-treino/{template_id}")
+def selecionar_treino_template(user_id: int, template_id: int, session: Session = Depends(get_session)):
+    """Aplica um treino pré-definido ao perfil do usuário."""
+    template = next((t for t in TREINOS_TEMPLATES if t["id"] == template_id), None)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template de treino não encontrado")
+    
+    # Criar novo registro de WorkoutPlan para o histórico do usuário
+    novo_plano = WorkoutPlan(
+        user_id=user_id,
+        titulo=template["titulo"],
+        foco=template["foco"],
+        nivel_dificuldade=template["intensidade"],
+        ai_insight=template["ai_insight"],
+        treino_json=json.dumps(template["exercicios"])
+    )
+    
+    session.add(novo_plano)
+    session.commit()
+    session.refresh(novo_plano)
+    
+    return {"status": "sucesso", "mensagem": "Treino aplicado!", "treino": template}
+
 @app.get("/usuarios", response_model=List[User])
 def listar_usuarios(session: Session = Depends(get_session)):
     return session.exec(select(User)).all()
@@ -80,17 +174,82 @@ def listar_dietas(session: Session = Depends(get_session)):
 
 @app.post("/login")
 def login(dados: LoginRequest, session: Session = Depends(get_session)):
-    statement = select(User).where(User.email == dados.email).where(User.password == dados.password)
-    user = session.exec(statement).first()
+    email_normalizado = dados.email.strip().lower()
+    print(f"\n🔑 [LOGIN] Tentativa para: {email_normalizado}")
+    
+    # Primeiro, tentamos achar o usuário apenas pelo email
+    user = session.exec(select(User).where(User.email == email_normalizado)).first()
     
     if not user:
+        print(f"❌ [LOGIN] Falha: Usuário '{email_normalizado}' não existe no banco.")
         raise HTTPException(status_code=401, detail="Email ou senha incorretos")
-    
+
+    # Se achou o usuário, conferimos a senha
+    if user.password != dados.password:
+        print(f"❌ [LOGIN] Falha: Senha incorreta para '{email_normalizado}'.")
+        print(f"   Digitada: '{dados.password}' | No Banco: '{user.password}'")
+        raise HTTPException(status_code=401, detail="Email ou senha incorretos")
+
+    print(f"✅ [LOGIN] Sucesso: {user.nome} (ID: {user.id})")
     return {
         "status": "sucesso",
         "user_id": user.id,
         "nome": user.nome
     }
+
+@app.post("/reset-password")
+def reset_password(dados: PasswordResetRequest, session: Session = Depends(get_session)):
+    email_normalizado = dados.email.strip().lower()
+    user = session.exec(select(User).where(User.email == email_normalizado)).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    user.password = dados.new_password
+    session.add(user)
+    session.commit()
+    
+    return {"status": "sucesso", "mensagem": "Senha atualizada com sucesso!"}
+
+@app.put("/user/{user_id}")
+def atualizar_perfil(user_id: int, dados: UserUpdate, session: Session = Depends(get_session)):
+    """Atualiza dados básicos do perfil do usuário sem alterar o treino."""
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    update_data = dados.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(user, key, value)
+    
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    
+    return {"status": "sucesso", "usuario": user}
+
+@app.put("/workout/{workout_id}")
+def atualizar_treino(workout_id: int, dados: WorkoutUpdate, session: Session = Depends(get_session)):
+    """Atualiza um plano de treino existente."""
+    workout = session.get(WorkoutPlan, workout_id)
+    if not workout:
+        raise HTTPException(status_code=404, detail="Treino não encontrado")
+    
+    if dados.titulo:
+        workout.titulo = dados.titulo
+    if dados.foco:
+        workout.foco = dados.foco
+    if dados.nivel_dificuldade:
+        workout.nivel_dificuldade = dados.nivel_dificuldade
+    if dados.ai_insight:
+        workout.ai_insight = dados.ai_insight
+    
+    workout.treino_json = json.dumps(dados.exercicios)
+    
+    session.add(workout)
+    session.commit()
+    session.refresh(workout)
+    return {"status": "sucesso", "treino": json.loads(workout.treino_json), "meta": workout}
 
 @app.get("/user/{user_id}/dashboard")
 def get_user_dashboard(user_id: int, session: Session = Depends(get_session)):
@@ -103,7 +262,13 @@ def get_user_dashboard(user_id: int, session: Session = Depends(get_session)):
 
     return {
         "user": user,
-        "treino": json.loads(ultimo_treino.treino_json) if ultimo_treino else None,
+        "treino": {
+            "titulo": ultimo_treino.titulo,
+            "foco": ultimo_treino.foco,
+            "intensidade": ultimo_treino.nivel_dificuldade,
+            "ai_insight": ultimo_treino.ai_insight,
+            "exercicios": json.loads(ultimo_treino.treino_json)
+        } if ultimo_treino else None,
         "treino_meta": ultimo_treino,
         "dieta": json.loads(ultima_dieta.dieta_json) if ultima_dieta else None
     }
@@ -111,75 +276,98 @@ def get_user_dashboard(user_id: int, session: Session = Depends(get_session)):
 @app.post("/gerar-treino")
 async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_session)):
     # 1. Gerenciar Usuário
-    statement = select(User).where(User.email == perfil.email)
+    email_normalizado = perfil.email.strip().lower()
+    statement = select(User).where(User.email == email_normalizado)
     usuario_existente = session.exec(statement).first()
 
     if usuario_existente:
         usuario_existente.peso = perfil.peso
         usuario_existente.objetivo = perfil.objetivo
         usuario_existente.nivel = perfil.nivel
+        usuario_existente.frequencia = perfil.frequencia
+        usuario_existente.local = perfil.local
+        usuario_existente.dieta = perfil.dieta
+        usuario_existente.lesoes = json.dumps(perfil.lesoes)
         usuario_existente.password = perfil.password
         novo_usuario = usuario_existente
-        print(f"🔄 Usuário atualizado: {novo_usuario.nome}")
+        try:
+            session.add(novo_usuario)
+            session.commit()
+            session.refresh(novo_usuario)
+            print(f"🔄 Usuário atualizado: {novo_usuario.nome}")
+        except Exception as e:
+            session.rollback()
+            print(f"❌ Erro ao atualizar usuário: {e}")
+            raise HTTPException(status_code=500, detail="Erro ao atualizar dados no banco.")
     else:
         novo_usuario = User(
             nome=perfil.nome,
-            email=perfil.email,
+            email=email_normalizado,
             password=perfil.password,
             idade=perfil.idade,
             peso=perfil.peso,
             altura=perfil.altura,
             objetivo=perfil.objetivo,
-            nivel=perfil.nivel
+            nivel=perfil.nivel,
+            genero=perfil.genero,
+            frequencia=perfil.frequencia,
+            local=perfil.local,
+            dieta=perfil.dieta,
+            lesoes=json.dumps(perfil.lesoes)
         )
-        session.add(novo_usuario)
-        session.commit()
-        session.refresh(novo_usuario)
-        print(f"✅ Novo usuário criado: {novo_usuario.nome}")
+        try:
+            session.add(novo_usuario)
+            session.commit()
+            session.refresh(novo_usuario)
+            print(f"✅ Novo usuário criado com ID {novo_usuario.id}: {novo_usuario.nome}")
+        except Exception as e:
+            session.rollback()
+            print(f"❌ Erro fatal ao criar usuário: {e}")
+            raise HTTPException(status_code=500, detail=f"Erro ao salvar no banco: {str(e)}")
 
     # 2. Chamar n8n
-    # Padrão: localhost (para rodar local). Docker injeta a variável de ambiente para 'n8n'.
-    webhook_url = os.getenv("WEBHOOK_URL", "http://localhost:5678/webhook-test/gerar-treino")
-    
-    payload = {
-        "nome": novo_usuario.nome,
-        "perfil": perfil.dict()
-    }
-
-    print("📡 Enviando para o n8n...")
-    
     treino_gerado = None
-    dados_n8n = {}
 
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(
-                webhook_url, 
-                json=payload, 
-                timeout=60.0,
-                auth=("admin", "marombai_n8n_secure") 
-            )
-            
-            if response.status_code != 200:
-                print(f"❌ Erro n8n: {response.status_code} - {response.text}")
-                raise HTTPException(status_code=500, detail=f"Erro n8n: {response.status_code}")
-            
-            dados_n8n = response.json()
-            treino_gerado = dados_n8n.get("treino")
-            
-            if not treino_gerado and "exercicios" in dados_n8n:
-                treino_gerado = dados_n8n
-            
-            if isinstance(treino_gerado, str):
-                cleaned_json = treino_gerado.replace("```json", "").replace("```", "").strip()
-                try:
-                    treino_gerado = json.loads(cleaned_json)
-                except:
-                    print(f"⚠️ Falha ao converter string para JSON.")
-
-        except Exception as e:
-            print(f"❌ Erro de conexão com n8n: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+    # Se o usuário enviou exercícios manuais, usamos eles e pulamos a IA
+    if perfil.exercicios and len(perfil.exercicios) > 0:
+        print("🛠️ Usando exercícios selecionados manualmente.")
+        treino_gerado = {
+            "titulo": f"Treino de {novo_usuario.nome}",
+            "foco": perfil.objetivo,
+            "intensidade": "Personalizada",
+            "ai_insight": "Treino montado manualmente. Foco total na execução!",
+            "exercicios": perfil.exercicios
+        }
+    else:
+        # LOGICA IA (Comentada/Desativada por enquanto conforme solicitado)
+        # webhook_url = os.getenv("WEBHOOK_URL", "http://localhost:5678/webhook-test/gerar-treino")
+        # payload = {"nome": novo_usuario.nome, "perfil": perfil.dict()}
+        # print("📡 Enviando para o n8n...")
+        # async with httpx.AsyncClient() as client:
+        #     try:
+        #         response = await client.post(webhook_url, json=payload, timeout=60.0, auth=("admin", "marombai_n8n_secure"))
+        #         if response.status_code == 200:
+        #             dados_n8n = response.json()
+        #             treino_gerado = dados_n8n.get("treino")
+        #             if not treino_gerado and "exercicios" in dados_n8n: treino_gerado = dados_n8n
+        #             if isinstance(treino_gerado, str):
+        #                 treino_gerado = json.loads(treino_gerado.replace("```json", "").replace("```", "").strip())
+        #     except Exception as e:
+        #         print(f"❌ Erro IA: {e}")
+        
+        # Fallback caso a IA esteja desativada e não venha exercícios manuais
+        if not treino_gerado:
+             treino_gerado = {
+                "titulo": "Treino Base",
+                "foco": "Adaptação",
+                "intensidade": "Leve",
+                "ai_insight": "Inicie com cargas leves para aprender a técnica.",
+                "exercicios": [
+                    {"nome": "Agachamento Livre", "series": "3x12", "carga": "Leve", "descanso": "60s"},
+                    {"nome": "Supino Reto", "series": "3x12", "carga": "Leve", "descanso": "60s"},
+                    {"nome": "Remada Curvada", "series": "3x12", "carga": "Leve", "descanso": "60s"}
+                ]
+            }
 
     # 3. Salvar Treino
     if not treino_gerado:
@@ -236,7 +424,10 @@ async def gerar_dieta(dados: DietRequest, session: Session = Depends(get_session
                 webhook_url_dieta, 
                 json=payload_dieta, 
                 timeout=60.0,
-                auth=("admin", "marombai_n8n_secure") 
+                auth=(
+                    os.getenv("N8N_USER", "admin"), 
+                    os.getenv("N8N_PASSWORD", "marombai_n8n_secure")
+                ) 
             )
             
             if response.status_code != 200:

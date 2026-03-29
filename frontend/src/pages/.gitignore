@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+.venv/
+*.py[cod]
+.env
+
+# Node / React
+frontend/node_modules/
+frontend/dist/
+
+# Banco de Dados e Docker
+postgres_data/
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+*.log
