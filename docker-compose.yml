@@ -35,6 +35,8 @@ services:
     build: ./backend
     container_name: marombai_backend
     restart: always
+    ports:
+      - "8000:8000"
     depends_on:
       - db
       - n8n

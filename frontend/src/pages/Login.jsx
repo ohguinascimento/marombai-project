@@ -4,8 +4,6 @@ import { Lock, Mail, ArrowRight, RefreshCcw, Eye, EyeOff } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-const API_URL = import.meta.env.VITE_API_URL;
-
 export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
