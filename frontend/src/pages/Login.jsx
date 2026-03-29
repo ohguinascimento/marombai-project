@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, ArrowRight, RefreshCcw, Eye, EyeOff } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL;
+import api from '../api/api.js';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -17,38 +16,30 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const url = isResetting ? `${API_URL}/reset-password` : `${API_URL}/login`;
+      const url = isResetting ? '/reset-password' : '/login';
       const payload = isResetting 
         ? { email: email.trim().toLowerCase(), new_password: password }
         : { email: email.trim().toLowerCase(), password };
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const { data } = await api.post(url, payload);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        if (isResetting) {
-          alert("Senha alterada com sucesso! Agora você pode entrar.");
-          setIsResetting(false);
-          setPassword('');
-          return;
-        }
-        // Salva sessão
-        localStorage.setItem('marombai_token', data.access_token);
-        localStorage.setItem('marombai_user_id', data.user.id);
-        localStorage.setItem('marombai_user_nome', data.user.nome);
-        localStorage.setItem('marombai_user_role', data.user.role);
-        navigate('/dashboard');
-      } else {
-        alert(data.detail || "Erro ao entrar");
+      if (isResetting) {
+        alert("Senha alterada com sucesso! Agora você pode entrar.");
+        setIsResetting(false);
+        setPassword('');
+        return;
       }
+
+      // Salva sessão
+      localStorage.setItem('marombai_token', data.access_token);
+      localStorage.setItem('marombai_user_id', data.user.id);
+      localStorage.setItem('marombai_user_nome', data.user.nome);
+      localStorage.setItem('marombai_user_role', data.user.role);
+      navigate('/dashboard');
+
     } catch (error) {
       console.error("Erro de login:", error);
-      alert("Erro de conexão com o servidor.");
+      alert(error.response?.data?.detail || "Erro ao tentar realizar a operação.");
     } finally {
       setLoading(false);
     }

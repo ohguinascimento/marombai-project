@@ -211,7 +211,14 @@ async def lifespan(app: FastAPI):
 
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    title="MarombAI API 🏋️‍♂️",
+    description="Plataforma de gestão de treinos e dietas baseada em IA.",
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
 
 # --- CONFIGURAÇÃO DO CORS ---
 app.add_middleware(
@@ -224,16 +231,17 @@ app.add_middleware(
 
 # --- ROTAS ---
 
-@app.get("/")
+# --- ROTAS PÚBLICAS/GERAIS ---
+@app.get("/", tags=["Geral"])
 def read_root():
     return {"message": "MarombAI Backend Operacional 🚀"}
 
-@app.get("/treinos/templates")
+@app.get("/treinos/templates", tags=["Treino"])
 def listar_templates():
     """Retorna a biblioteca de treinos pré-definidos."""
     return TREINOS_TEMPLATES
 
-@app.post("/user/{user_id}/selecionar-treino/{template_id}")
+@app.post("/user/{user_id}/selecionar-treino/{template_id}", tags=["Treino"])
 def selecionar_treino_template(user_id: int, template_id: int, session: Session = Depends(get_session)):
     """Aplica um treino pré-definido ao perfil do usuário."""
     template = next((t for t in TREINOS_TEMPLATES if t["id"] == template_id), None)
@@ -256,24 +264,24 @@ def selecionar_treino_template(user_id: int, template_id: int, session: Session 
     
     return {"status": "sucesso", "mensagem": "Treino aplicado!", "treino": template}
 
-@app.get("/usuarios", response_model=List[User], dependencies=[Depends(get_current_admin)])
+@app.get("/usuarios", response_model=List[User], dependencies=[Depends(get_current_admin)], tags=["Admin"])
 def listar_usuarios(session: Session = Depends(get_session), admin: User = Depends(get_current_admin)):
     return session.exec(select(User)).all()
 
-@app.get("/treinos", dependencies=[Depends(get_current_admin)])
+@app.get("/treinos", dependencies=[Depends(get_current_admin)], tags=["Admin"])
 def listar_treinos(session: Session = Depends(get_session)):
     return session.exec(select(WorkoutPlan)).all()
 
-@app.get("/dietas", dependencies=[Depends(get_current_admin)])
+@app.get("/dietas", dependencies=[Depends(get_current_admin)], tags=["Admin"])
 def listar_dietas(session: Session = Depends(get_session)):
     return session.exec(select(DietPlan)).all()
 
-@app.get("/admin/security-logs", response_model=List[PasswordResetLog], dependencies=[Depends(get_current_admin)])
+@app.get("/admin/security-logs", response_model=List[PasswordResetLog], dependencies=[Depends(get_current_admin)], tags=["Admin"])
 def listar_logs_seguranca(session: Session = Depends(get_session)):
     """Retorna todos os logs de segurança ordenados pelos mais recentes."""
     return session.exec(select(PasswordResetLog).order_by(PasswordResetLog.created_at.desc())).all()
 
-@app.post("/login")
+@app.post("/login", tags=["Autenticação"])
 def login(dados: LoginRequest, session: Session = Depends(get_session)):
     email_normalizado = dados.email.strip().lower()
     print(f"\n🔑 [LOGIN] Tentativa para: {email_normalizado}")
@@ -302,7 +310,7 @@ def login(dados: LoginRequest, session: Session = Depends(get_session)):
         "user": {"id": user.id, "nome": user.nome, "role": user.role}
     }
 
-@app.post("/reset-password")
+@app.post("/reset-password", tags=["Autenticação"])
 async def request_password_reset(dados: PasswordResetRequest, request: Request, session: Session = Depends(get_session)):
     """Inicia o fluxo de reset enviando o e-mail com token."""
     email_normalizado = dados.email.strip().lower()
@@ -335,7 +343,7 @@ async def request_password_reset(dados: PasswordResetRequest, request: Request, 
 
     return {"status": "sucesso", "mensagem": "E-mail de recuperação enviado."}
 
-@app.post("/reset-password/confirm")
+@app.post("/reset-password/confirm", tags=["Autenticação"])
 def confirm_password_reset(dados: PasswordResetConfirmRequest, request: Request, session: Session = Depends(get_session)):
     """Valida o token e define a nova senha."""
     ip = request.client.host
@@ -370,7 +378,7 @@ def confirm_password_reset(dados: PasswordResetConfirmRequest, request: Request,
     session.commit()
     return {"status": "sucesso", "mensagem": "Senha atualizada com sucesso!"}
 
-@app.put("/user/{user_id}/password")
+@app.put("/user/{user_id}/password", tags=["Usuário"])
 def atualizar_senha(user_id: int, dados: ChangePasswordRequest, session: Session = Depends(get_session)):
     """Altera a senha do usuário validando a senha atual."""
     user = session.get(User, user_id)
@@ -387,7 +395,7 @@ def atualizar_senha(user_id: int, dados: ChangePasswordRequest, session: Session
     
     return {"status": "sucesso", "mensagem": "Senha alterada com sucesso!"}
 
-@app.put("/user/{user_id}")
+@app.put("/user/{user_id}", tags=["Usuário"])
 def atualizar_perfil(user_id: int, dados: UserUpdate, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     """Atualiza dados básicos do perfil do usuário sem alterar o treino."""
     # Proteção contra IDOR: Usuário só pode editar a si mesmo
@@ -409,7 +417,7 @@ def atualizar_perfil(user_id: int, dados: UserUpdate, current_user: User = Depen
     
     return {"status": "sucesso", "usuario": user}
 
-@app.put("/workout/{workout_id}")
+@app.put("/workout/{workout_id}", tags=["Treino"])
 def atualizar_treino(workout_id: int, dados: WorkoutUpdate, session: Session = Depends(get_session)):
     """Atualiza um plano de treino existente."""
     workout = session.get(WorkoutPlan, workout_id)
@@ -432,7 +440,7 @@ def atualizar_treino(workout_id: int, dados: WorkoutUpdate, session: Session = D
     session.refresh(workout)
     return {"status": "sucesso", "treino": json.loads(workout.treino_json), "meta": workout}
 
-@app.post("/workout/finish")
+@app.post("/workout/finish", tags=["Treino"])
 def finalizar_treino(dados: WorkoutLogCreate, session: Session = Depends(get_session)):
     """Registra a conclusão de uma sessão de treino."""
     try:
@@ -451,7 +459,7 @@ def finalizar_treino(dados: WorkoutLogCreate, session: Session = Depends(get_ses
         print(f"❌ Erro ao salvar log de treino: {e}")
         raise HTTPException(status_code=500, detail="Erro ao salvar histórico de treino.")
 
-@app.get("/user/{user_id}/evolution")
+@app.get("/user/{user_id}/evolution", tags=["Usuário"])
 def get_user_evolution(user_id: int, session: Session = Depends(get_session)):
     """Busca o histórico de treinos para mostrar a evolução."""
     statement = select(WorkoutLog).where(WorkoutLog.user_id == user_id).order_by(WorkoutLog.data_realizacao.asc())
@@ -470,7 +478,7 @@ def get_user_evolution(user_id: int, session: Session = Depends(get_session)):
 
 # --- ROTA PROTEGIDA EXEMPLO ---
 
-@app.get("/user/dashboard/me")
+@app.get("/user/dashboard/me", tags=["Dashboard"])
 def get_user_dashboard(
     current_user: User = Depends(get_current_user), 
     session: Session = Depends(get_session)
@@ -495,7 +503,7 @@ def get_user_dashboard(
         "dieta": json.loads(ultima_dieta.dieta_json) if ultima_dieta else None
     }
 
-@app.post("/gerar-treino")
+@app.post("/gerar-treino", tags=["Geração IA"])
 async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_session)):
     # 1. Gerenciar Usuário
     email_normalizado = perfil.email.strip().lower()
@@ -621,7 +629,7 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
         "treino": treino_gerado
     }
 
-@app.post("/gerar-dieta")
+@app.post("/gerar-dieta", tags=["Geração IA"])
 async def gerar_dieta(dados: DietRequest, session: Session = Depends(get_session)):
     usuario = session.get(User, dados.user_id)
     if not usuario:

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ShieldAlert, CheckCircle2, XCircle, Clock, Globe, Monitor, BarChart3, Search, Download } from 'lucide-react';
-import api from '../api/api';
+import api from '../api/api.js';
 
 export default function AdminSecurityLogs() {
   const navigate = useNavigate();
@@ -94,7 +94,6 @@ export default function AdminSecurityLogs() {
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto">
-          {/* Botão Exportar */}
           <button
             onClick={exportToCSV}
             disabled={filteredLogs.length === 0}
@@ -103,7 +102,6 @@ export default function AdminSecurityLogs() {
             <Download size={16} /> EXPORTAR CSV
           </button>
 
-          {/* Barra de Busca */}
           <div className="relative w-full md:w-80">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
             <input 
@@ -155,10 +153,9 @@ export default function AdminSecurityLogs() {
           </div>
         </div>
 
-        {/* Card de Resumo Rápido */}
         <div className="bg-neon-green p-6 rounded-3xl text-black flex flex-col justify-between shadow-[0_0_30px_rgba(0,255,148,0.1)]">
           <div>
-            <p className="text-[10px] uppercase font-black opacity-60">Total de Eventos</p>
+            <p className="text-[10px] uppercase font-black opacity-60">Eventos Filtrados</p>
             <p className="text-4xl font-black">{filteredLogs.length}</p>
           </div>
           <div className="space-y-1">
@@ -166,7 +163,7 @@ export default function AdminSecurityLogs() {
               <span>Taxa de Sucesso</span>
               <span>{filteredLogs.length > 0 ? ((filteredLogs.filter(l => l.status === 'success').length / filteredLogs.length) * 100).toFixed(1) : 0}%</span>
             </div>
-            <p className="text-[9px] opacity-50 italic mt-2">Monitoramento ativo contra ataques de força bruta.</p>
+            <p className="text-[9px] opacity-50 italic mt-2">Monitoramento ativo contra ataques.</p>
           </div>
         </div>
       </div>

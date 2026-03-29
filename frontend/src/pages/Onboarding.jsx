@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronRight, ChevronLeft, Dumbbell, Activity, Apple, Scale, Calendar, Brain, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-const API_URL = import.meta.env.VITE_API_URL;
+import api from '../api/api';
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -109,20 +108,13 @@ export default function Onboarding() {
       const minDelay = new Promise(resolve => setTimeout(resolve, 1500));
       
       // Executa a requisição e o delay em paralelo
-      const [response] = await Promise.all([
-        fetch(`${API_URL}/gerar-treino`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload), // Enviamos o 'payload' limpo, não o 'formData' sujo
-      }),
+      const [res] = await Promise.all([
+        api.post('/gerar-treino', payload),
         minDelay
       ]);
 
-      const data = await response.json();
-
-      if (response.ok && data.status === 'sucesso') {
+      const data = res.data;
+      if (data.status === 'sucesso') {
         console.log("✅ Sucesso! Resposta:", data);
 
         // Salva o ID no localStorage para persistência
