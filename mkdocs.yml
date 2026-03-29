@@ -23,6 +23,8 @@ nav:
   - Arquitetura:
     - Fluxo de Dados: arquitetura.md
     - Refatoração: RESUMO_ATUALIZACOES_ARQUITETURA.md
+    - Padrões de Código: padroes_desenvolvimento.md
+    - Guia para IAs: instrucoes_ia.md
   - Segurança:
     - Score em Tempo Real: security_score.md
     - Relatórios Manuais: seguranca.md

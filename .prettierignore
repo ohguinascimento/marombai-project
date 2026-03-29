@@ -1,0 +1,21 @@
+# --- BUILDS E DEPENDÊNCIAS ---
+node_modules/
+frontend/dist/
+frontend/build/
+
+# --- DOCUMENTAÇÃO (Conforme solicitado) ---
+Doc/
+*.md
+
+# --- BACKEND E AMBIENTE PYTHON ---
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# --- INFRAESTRUTURA E DADOS ---
+postgres_data*/
+n8n_data/
+caddy_data/
+caddy_config/
+logs/
