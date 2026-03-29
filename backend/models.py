@@ -58,7 +58,7 @@ class PasswordResetLog(SQLModel, table=True):
     action: str  # "request" ou "confirm"
     status: str  # "success", "failed", "user_not_found"
     ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
+    user_agent: Optional[str] = Field(max_length=255, default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 # --- Tabela de Dietas (Histórico) ---

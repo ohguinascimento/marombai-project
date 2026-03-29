@@ -27,6 +27,8 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: marombai_db
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data_v2:/var/lib/postgresql/data
 
@@ -45,6 +47,8 @@ services:
       WEBHOOK_URL_DIETA: "http://n8n:5678/webhook/gerar-dieta"
       DATABASE_URL: "postgresql://admin:password123@db:5432/marombai_db"
       ALLOWED_ORIGINS: "https://marombai.app,https://api.marombai.app,http://localhost:5173"
+    volumes:
+      - ./logs:/app/logs
 
   # --- FRONTEND (REACT) ---
   frontend:

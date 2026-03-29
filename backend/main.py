@@ -1,13 +1,19 @@
 # --- BIBLIOTECAS EXTERNAS ---
 import json
+import time
 import httpx
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
+from loguru import logger
 from passlib.context import CryptContext
 from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware 
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, select
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from contextlib import asynccontextmanager
 from typing import List, Optional
 from pydantic import BaseModel
@@ -19,6 +25,22 @@ from backend.models import User, WorkoutPlan, DietPlan, WorkoutLog, PasswordRese
 
 # --- CONFIGURAÇÃO DE SEGURANÇA (HASHING) ---
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# --- CONFIGURAÇÃO SENTRY ---
+SENTRY_DSN = os.getenv("SENTRY_DSN")
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[FastApiIntegration()],
+        # Monitoramento de Performance: 1.0 captura 100% das transações.
+        # Ajuste para 0.1 em produção com muito tráfego para economizar cota.
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", 1.0)),
+        # Profiling: Permite ver exatamente qual função está consumindo CPU.
+        profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", 1.0)),
+        environment=os.getenv("ENV", "development"),
+        send_default_pii=True # Útil para ver qual usuário (ID) teve o problema
+    )
+    logger.info("📡 Sentry inicializado com sucesso!")
 
 # --- CONFIGURAÇÃO JWT ---
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -179,7 +201,7 @@ async def send_sendgrid_email(to_email: str, subject: str, html_content: str):
     """Integração real com a API v3 do SendGrid via httpx."""
     api_key = os.getenv("SENDGRID_API_KEY")
     if not api_key:
-        print(f"⚠️ SENDGRID_API_KEY ausente. Simulação de e-mail para {to_email}")
+        logger.warning(f"SENDGRID_API_KEY ausente. Simulação de e-mail para {to_email}")
         return
 
     url = "https://api.sendgrid.com/v3/mail/send"
@@ -229,6 +251,45 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- MIDDLEWARE DE PERFORMANCE ---
+@app.middleware("http")
+async def monitorar_tempo_resposta(request: Request, call_next):
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    process_time = time.perf_counter() - start_time
+    # Adiciona o tempo no header para inspeção via navegador
+    response.headers["X-Process-Time"] = str(round(process_time, 4))
+    logger.info(f"⏱️ {request.method} {request.url.path} | Tempo: {process_time:.4f}s")
+    return response
+
+# --- TRATAMENTO GLOBAL DE EXCEÇÕES ---
+
+@app.exception_handler(SQLAlchemyError)
+async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
+    """Captura erros genéricos de banco de dados e impede vazamento de logs no JSON."""
+    # Logamos o erro real no terminal/arquivo para o desenvolvedor
+    logger.error(f"[DATABASE ERROR] no endpoint {request.url.path}: {str(exc)}")
+    
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Ocorreu um erro interno ao processar os dados no servidor."}
+    )
+
+@app.exception_handler(IntegrityError)
+async def integrity_exception_handler(request: Request, exc: IntegrityError):
+    """Captura erros de integridade, como e-mails duplicados."""
+    logger.warning(f"[INTEGRITY ERROR] no endpoint {request.url.path}: {str(exc)}")
+    
+    # Verifica se é erro de e-mail duplicado (comum no cadastro)
+    detail = "Conflito de integridade nos dados enviados."
+    if "user.email" in str(exc).lower():
+        detail = "Este e-mail já está cadastrado no sistema."
+
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": detail}
+    )
+
 # --- ROTAS ---
 
 # --- ROTAS PÚBLICAS/GERAIS ---
@@ -236,14 +297,22 @@ app.add_middleware(
 def read_root():
     return {"message": "MarombAI Backend Operacional 🚀"}
 
+@app.get("/sentry-debug", tags=["Geral"])
+async def trigger_error():
+    """Rota para testar a integração com o Sentry."""
+    division_by_zero = 1 / 0
+
 @app.get("/treinos/templates", tags=["Treino"])
 def listar_templates():
     """Retorna a biblioteca de treinos pré-definidos."""
     return TREINOS_TEMPLATES
 
-@app.post("/user/{user_id}/selecionar-treino/{template_id}", tags=["Treino"])
-def selecionar_treino_template(user_id: int, template_id: int, session: Session = Depends(get_session)):
+@app.post("/user/{user_id}/selecionar-treino/{template_id}", tags=["Treino"], dependencies=[Depends(get_current_user)])
+def selecionar_treino_template(user_id: int, template_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     """Aplica um treino pré-definido ao perfil do usuário."""
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Acesso negado: ID do usuário divergente do token")
+        
     template = next((t for t in TREINOS_TEMPLATES if t["id"] == template_id), None)
     if not template:
         raise HTTPException(status_code=404, detail="Template de treino não encontrado")
@@ -281,25 +350,53 @@ def listar_logs_seguranca(session: Session = Depends(get_session)):
     """Retorna todos os logs de segurança ordenados pelos mais recentes."""
     return session.exec(select(PasswordResetLog).order_by(PasswordResetLog.created_at.desc())).all()
 
+@app.get("/admin/logs/files", tags=["Admin"], dependencies=[Depends(get_current_admin)])
+def listar_arquivos_logs():
+    """Lista todos os arquivos de log disponíveis na pasta de volumes."""
+    log_dir = "logs"
+    if not os.path.exists(log_dir):
+        return []
+    # Filtra apenas arquivos .log e ordena pelo mais recente
+    files = [f for f in os.listdir(log_dir) if f.endswith(".log")]
+    return sorted(files, reverse=True)
+
+@app.get("/admin/logs/view/{filename}", tags=["Admin"], dependencies=[Depends(get_current_admin)])
+def ler_conteudo_log(filename: str):
+    """Lê as últimas linhas de um arquivo de log específico."""
+    # os.path.basename previne ataques de Path Traversal (ex: ../../../.env)
+    clean_filename = os.path.basename(filename)
+    log_path = os.path.join("logs", clean_filename)
+    
+    if not os.path.exists(log_path):
+        raise HTTPException(status_code=404, detail="Arquivo de log não encontrado.")
+    
+    try:
+        with open(log_path, "r", encoding="utf-8") as f:
+            # Retornamos as últimas 1000 linhas para evitar sobrecarga no frontend
+            lines = f.readlines()[-1000:]
+        return {"filename": clean_filename, "content": "".join(lines)}
+    except Exception as e:
+        logger.error(f"Erro ao ler arquivo de log {clean_filename}: {e}")
+        raise HTTPException(status_code=500, detail="Erro interno ao ler o log.")
+
 @app.post("/login", tags=["Autenticação"])
 def login(dados: LoginRequest, session: Session = Depends(get_session)):
     email_normalizado = dados.email.strip().lower()
-    print(f"\n🔑 [LOGIN] Tentativa para: {email_normalizado}")
+    logger.info(f"🔑 Tentativa de login para: {email_normalizado}")
     
     # Primeiro, tentamos achar o usuário apenas pelo email
     user = session.exec(select(User).where(User.email == email_normalizado)).first()
     
     if not user:
-        print(f"❌ [LOGIN] Falha: Usuário '{email_normalizado}' não existe no banco.")
+        logger.warning(f"[LOGIN] Falha: Usuário '{email_normalizado}' não existe no banco.")
         raise HTTPException(status_code=401, detail="Email ou senha incorretos")
 
     # Se achou o usuário, conferimos a senha
     if not pwd_context.verify(dados.password, user.password):
-        print(f"❌ [LOGIN] Falha: Senha incorreta para '{email_normalizado}'.")
-        print(f"   Tentativa com senha inválida para o hash no banco.")
+        logger.warning(f"[LOGIN] Falha: Senha incorreta para '{email_normalizado}'. Tentativa com senha inválida para o hash no banco.")
         raise HTTPException(status_code=401, detail="Email ou senha incorretos")
 
-    print(f"✅ [LOGIN] Sucesso: {user.nome} (ID: {user.id})")
+    logger.info(f"✅ [LOGIN] Sucesso: {user.nome} (ID: {user.id})")
     
     # Gera o Token JWT
     access_token = create_access_token(data={"sub": str(user.id)})
@@ -337,7 +434,7 @@ async def request_password_reset(dados: PasswordResetRequest, request: Request, 
     await send_sendgrid_email(email_normalizado, "Recuperação de Senha - MarombAI", html)
     
     # Registra sucesso na solicitação
-    log = PasswordResetLog(email=email_normalizado, action="request", status="success", ip_address=ip, user_agent=ua)
+    log = PasswordResetLog(email=email_normalizado, action="request", status="success", ip_address=ip, user_agent=ua[:255]) # Trunca user_agent
     session.add(log)
     session.commit()
 
@@ -417,13 +514,17 @@ def atualizar_perfil(user_id: int, dados: UserUpdate, current_user: User = Depen
     
     return {"status": "sucesso", "usuario": user}
 
-@app.put("/workout/{workout_id}", tags=["Treino"])
-def atualizar_treino(workout_id: int, dados: WorkoutUpdate, session: Session = Depends(get_session)):
+@app.put("/workout/{workout_id}", tags=["Treino"], dependencies=[Depends(get_current_user)])
+def atualizar_treino(workout_id: int, dados: WorkoutUpdate, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     """Atualiza um plano de treino existente."""
     workout = session.get(WorkoutPlan, workout_id)
     if not workout:
         raise HTTPException(status_code=404, detail="Treino não encontrado")
     
+    # Proteção de Propriedade: Garante que o treino pertence ao usuário logado
+    if workout.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso negado: Este treino não pertence a você")
+
     if dados.titulo:
         workout.titulo = dados.titulo
     if dados.foco:
@@ -440,9 +541,12 @@ def atualizar_treino(workout_id: int, dados: WorkoutUpdate, session: Session = D
     session.refresh(workout)
     return {"status": "sucesso", "treino": json.loads(workout.treino_json), "meta": workout}
 
-@app.post("/workout/finish", tags=["Treino"])
-def finalizar_treino(dados: WorkoutLogCreate, session: Session = Depends(get_session)):
+@app.post("/workout/finish", tags=["Treino"], dependencies=[Depends(get_current_user)])
+def finalizar_treino(dados: WorkoutLogCreate, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     """Registra a conclusão de uma sessão de treino."""
+    if current_user.id != dados.user_id:
+        raise HTTPException(status_code=403, detail="Não é permitido salvar treinos para outro usuário")
+
     try:
         novo_log = WorkoutLog(
             user_id=int(dados.user_id),
@@ -459,9 +563,12 @@ def finalizar_treino(dados: WorkoutLogCreate, session: Session = Depends(get_ses
         print(f"❌ Erro ao salvar log de treino: {e}")
         raise HTTPException(status_code=500, detail="Erro ao salvar histórico de treino.")
 
-@app.get("/user/{user_id}/evolution", tags=["Usuário"])
-def get_user_evolution(user_id: int, session: Session = Depends(get_session)):
+@app.get("/user/{user_id}/evolution", tags=["Usuário"], dependencies=[Depends(get_current_user)])
+def get_user_evolution(user_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     """Busca o histórico de treinos para mostrar a evolução."""
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Você só pode visualizar sua própria evolução")
+
     statement = select(WorkoutLog).where(WorkoutLog.user_id == user_id).order_by(WorkoutLog.data_realizacao.asc())
     logs = session.exec(statement).all()
 
@@ -524,10 +631,10 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
             session.add(novo_usuario)
             session.commit()
             session.refresh(novo_usuario)
-            print(f"🔄 Usuário atualizado: {novo_usuario.nome}")
+            logger.info(f"🔄 Usuário atualizado: {novo_usuario.nome}")
         except Exception as e:
             session.rollback()
-            print(f"❌ Erro ao atualizar usuário: {e}")
+            logger.error(f"❌ Erro ao atualizar usuário: {e}")
             raise HTTPException(status_code=500, detail="Erro ao atualizar dados no banco.")
     else:
         novo_usuario = User(
@@ -549,10 +656,10 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
             session.add(novo_usuario)
             session.commit()
             session.refresh(novo_usuario)
-            print(f"✅ Novo usuário criado com ID {novo_usuario.id}: {novo_usuario.nome}")
+            logger.info(f"✅ Novo usuário criado com ID {novo_usuario.id}: {novo_usuario.nome}")
         except Exception as e:
             session.rollback()
-            print(f"❌ Erro fatal ao criar usuário: {e}")
+            logger.error(f"❌ Erro fatal ao criar usuário: {e}")
             raise HTTPException(status_code=500, detail=f"Erro ao salvar no banco: {str(e)}")
 
     # 2. Chamar n8n
@@ -560,7 +667,7 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
 
     # Se o usuário enviou exercícios manuais, usamos eles e pulamos a IA
     if perfil.exercicios and len(perfil.exercicios) > 0:
-        print("🛠️ Usando exercícios selecionados manualmente.")
+        logger.info("🛠️ Usando exercícios selecionados manualmente.")
         treino_gerado = {
             "titulo": f"Treino de {novo_usuario.nome}",
             "foco": perfil.objetivo,
@@ -619,7 +726,7 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
         session.add(novo_plano)
         session.commit()
         session.refresh(novo_plano)
-        print(f"💾 Treino salvo! ID: {novo_plano.id}")
+        logger.info(f"💾 Treino salvo! ID: {novo_plano.id}")
 
     return {
         "status": "sucesso",
@@ -629,9 +736,12 @@ async def gerar_treino(perfil: UserCreate, session: Session = Depends(get_sessio
         "treino": treino_gerado
     }
 
-@app.post("/gerar-dieta", tags=["Geração IA"])
-async def gerar_dieta(dados: DietRequest, session: Session = Depends(get_session)):
-    usuario = session.get(User, dados.user_id)
+@app.post("/gerar-dieta", tags=["Geração IA"], dependencies=[Depends(get_current_user)])
+async def gerar_dieta(dados: DietRequest, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    if current_user.id != dados.user_id:
+        raise HTTPException(status_code=403, detail="Operação não autorizada para este ID")
+
+    usuario = current_user
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
@@ -646,7 +756,7 @@ async def gerar_dieta(dados: DietRequest, session: Session = Depends(get_session
         "perfil_dieta": dados.dict()
     }
 
-    print("📡 Enviando para o n8n (Dieta)...")
+    logger.info("📡 Enviando para o n8n (Dieta)...")
     dieta_gerada = None
     
     async with httpx.AsyncClient() as client:
@@ -671,7 +781,7 @@ async def gerar_dieta(dados: DietRequest, session: Session = Depends(get_session
                 dieta_gerada = json.loads(dieta_gerada.replace("```json", "").replace("```", "").strip())
 
         except Exception as e:
-            print(f"❌ Erro de conexão com n8n (Dieta): {e}")
+            logger.error(f"❌ Erro de conexão com n8n (Dieta): {e}")
             raise HTTPException(status_code=500, detail=f"Erro de conexão com a IA: {e}")
 
     if not dieta_gerada:
