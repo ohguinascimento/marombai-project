@@ -7,8 +7,6 @@
 # Snippet reutilizável para segurança e performance
 (common) {
     encode zstd gzip
-    # Adiciona suporte para certificados locais auto-assinados em dev
-    tls internal
     header {
         # Previne ataques de sniffing de MIME
         X-Content-Type-Options "nosniff"
@@ -21,24 +19,35 @@
     }
 }
 
-# Frontend (Site Principal)
-marombai.app, localhost {
+# Produção - Frontend (Certificado Automático Let's Encrypt)
+marombai.app {
     import common
+    tls internal
+    reverse_proxy frontend:80
+}
+
+# Desenvolvimento Local
+localhost {
+    import common
+    tls internal
     reverse_proxy frontend:80
 }
 
 www.marombai.app {
+    tls internal
     redir https://marombai.app{uri} permanent
 }
 
 # Backend (API)
 api.marombai.app {
     import common
+    tls internal
     reverse_proxy backend:8000
 }
 
 # n8n (Fluxos)
 n8n.marombai.app {
     import common
+    tls internal
     reverse_proxy n8n:5678
 }
