@@ -3,8 +3,8 @@ import httpx
 from typing import Optional, Dict, Any
 from loguru import logger
 from fastapi import HTTPException
-from config import settings
-from schemas.ai_schemas import UserDataSchema, DietProfileSchema, WorkoutProfileSchema
+from backend.config import settings
+from backend.services.ai_schemas import UserDataSchema, DietProfileSchema, WorkoutProfileSchema
 
 class AIService:
     def __init__(self):

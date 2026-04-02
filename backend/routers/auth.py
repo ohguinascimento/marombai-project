@@ -8,7 +8,7 @@ from loguru import logger
 from jose import jwt, exceptions
 
 from backend.database import get_session
-from backend.models import User, PasswordResetLog
+from backend.models import UserAuth, PasswordResetLog
 from backend.schemas import LoginRequest, PasswordResetRequest, PasswordResetConfirmRequest, Token
 from backend.security import SecurityManager, SECRET_KEY, ALGORITHM
 
@@ -41,20 +41,32 @@ def login(dados: LoginRequest, session: Session = Depends(get_session)):
     email_normalizado = dados.email.strip().lower()
     logger.info(f"🔑 Tentativa de login para: {email_normalizado}")
     
-    user = session.exec(select(User).where(User.email == email_normalizado)).first()
+    # Eagerly load the profile to avoid AttributeError when accessing user.profile
+    from sqlalchemy.orm import selectinload
+    user = session.exec(
+        select(UserAuth).options(selectinload(UserAuth.profile))
+        .where(UserAuth.email == email_normalizado)
+    ).first()
     
     if not user or not SecurityManager.verify_password(dados.password, user.password):
         logger.warning(f"❌ [LOGIN] Falha para '{email_normalizado}'. Credenciais inválidas.")
         raise HTTPException(status_code=401, detail="Email ou senha incorretos")
 
-    logger.info(f"✅ [LOGIN] Sucesso: Usuário '{user.nome}' (ID: {user.id})")
+    logger.info(f"✅ [LOGIN] Sucesso: Usuário ID {user.id}")
     
-    access_token = SecurityManager.create_access_token(data={"sub": str(user.id)})
+    # Agora o token carrega informações básicas para o Frontend e para validações rápidas no Backend
+    token_data = {
+        "sub": str(user.id),
+        "nome": user.profile.nome if user.profile else "Atleta",
+        "role": user.role
+    }
+    
+    access_token = SecurityManager.create_access_token(data=token_data)
     
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": {"id": user.id, "nome": user.nome, "role": user.role}
+        "user": {"id": user.id, "nome": token_data["nome"], "role": user.role}
     }
 
 @router.post("/reset-password")
@@ -64,7 +76,7 @@ async def request_password_reset(dados: PasswordResetRequest, request: Request, 
     ip = request.client.host
     ua = request.headers.get("user-agent", "")[:255]
 
-    user = session.exec(select(User).where(User.email == email_normalizado)).first()
+    user = session.exec(select(UserAuth).where(UserAuth.email == email_normalizado)).first()
     
     if not user:
         log = PasswordResetLog(email=email_normalizado, action="request", status="user_not_found", ip_address=ip, user_agent=ua)
@@ -75,7 +87,8 @@ async def request_password_reset(dados: PasswordResetRequest, request: Request, 
     token = SecurityManager.create_password_reset_token(email_normalizado)
     reset_link = f"{FRONTEND_URL}/reset-password/confirm?token={token}"
     
-    html = f"<p>Olá {user.nome},</p><p>Clique no link abaixo para resetar sua senha:</p><a href='{reset_link}'>{reset_link}</a>"
+    nome_usuario = user.profile.nome if user.profile else "Marombeiro"
+    html = f"<p>Olá {nome_usuario},</p><p>Clique no link abaixo para resetar sua senha:</p><a href='{reset_link}'>{reset_link}</a>"
     await send_sendgrid_email(email_normalizado, "Recuperação de Senha - MarombAI", html)
     
     log = PasswordResetLog(email=email_normalizado, action="request", status="success", ip_address=ip, user_agent=ua)
@@ -105,7 +118,7 @@ def confirm_password_reset(dados: PasswordResetConfirmRequest, request: Request,
         logger.error(f"❌ Erro na validação do token: {str(e)}")
         raise HTTPException(status_code=400, detail="Link de recuperação inválido.")
 
-    user = session.exec(select(User).where(User.email == email_log)).first()
+    user = session.exec(select(UserAuth).where(UserAuth.email == email_log)).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 

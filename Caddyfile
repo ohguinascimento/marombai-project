@@ -7,11 +7,9 @@
 # Snippet reutilizável para segurança e performance
 (common) {
     encode zstd gzip
+    # Adiciona suporte para certificados locais auto-assinados em dev
+    tls internal
     header {
-        # Adiciona suporte para certificados locais auto-assinados em dev
-        tls internal
-        # HSTS (Strict-Transport-Security) - Força HTTPS por 1 ano
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         # Previne ataques de sniffing de MIME
         X-Content-Type-Options "nosniff"
         # Proteção contra Clickjacking
@@ -24,7 +22,7 @@
 }
 
 # Frontend (Site Principal)
-marombai.app {
+marombai.app, localhost {
     import common
     reverse_proxy frontend:80
 }

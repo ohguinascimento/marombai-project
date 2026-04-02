@@ -37,8 +37,9 @@ services:
     build: ./backend
     container_name: marombai_backend
     restart: always
-    ports:
-      - "8000:8000"
+    # Removemos ports e usamos expose para que apenas o Caddy o enxergue
+    expose:
+      - "8000"
     depends_on:
       - db
       - n8n
@@ -57,7 +58,10 @@ services:
 
   # --- FRONTEND (REACT) ---
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - VITE_API_URL=https://api.marombai.app
     container_name: marombai_frontend
     restart: always
     # Em produção, não precisamos expor a porta 5173 nem montar volumes de código
@@ -71,8 +75,9 @@ services:
     image: docker.n8n.io/n8nio/n8n
     container_name: marombai_n8n
     restart: always
-    ports:
-      - "5678:5678"
+    # Removemos ports para forçar o tráfego via Caddy (HTTPS)
+    expose:
+      - "5678"
     environment:
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=${N8N_USER}

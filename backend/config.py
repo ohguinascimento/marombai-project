@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, SecretStr
+from pydantic import Field
 
 class Settings(BaseSettings):
     # Ambiente
@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     WEBHOOK_URL_DIETA: str = "http://n8n:5678/webhook/gerar-dieta"
     
     # CORS - Lista de domínios permitidos
-    ALLOWED_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    ALLOWED_ORIGINS: str = Field("https://marombai.app,https://api.marombai.app,https://localhost,http://localhost:5173", description="Domínios permitidos para CORS, separados por vírgula")
 
     # Database
     DATABASE_URL: str = "postgresql://postgres:password123@db:5432/marombai"

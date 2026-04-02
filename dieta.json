@@ -12,10 +12,7 @@
       "name": "Webhook (Recebe Dados Dieta)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [
-        460,
-        600
-      ],
+      "position": [460, 600],
       "credentials": {
         "httpBasicAuth": {
           "id": "YOUR_CREDENTIAL_ID",
@@ -43,7 +40,7 @@
           "parameters": [
             {
               "name": "contents",
-              "value": "={{ [{'parts': [{'text': 'Você é o MarombAI, um nutricionista esportivo de elite. Crie um plano alimentar para: \\nNome: ' + $json.body.user.nome + '\\nPeso: ' + $json.body.user.peso + 'kg\\nObjetivo: ' + $json.body.perfil_dieta.objetivo + '\\nEstilo Alimentar: ' + $json.body.perfil_dieta.dieta + '\\nRestrições: ' + ($json.body.perfil_dieta.restricoes.length > 0 ? $json.body.perfil_dieta.restricoes.join(', ') : 'Nenhuma') + '\\n\\nREGRAS OBRIGATÓRIAS:\\n1. Retorne APENAS um JSON válido. Não use markdown (```json). Apenas o objeto cru.\\n2. O campo \"titulo\" deve ser criativo e motivador.\\n3. O campo \"kcal\" deve ser um número inteiro estimado para o objetivo.\\n4. A estrutura do JSON deve ser exatamente esta:\\n{\\n  \"titulo\": \"Nome Criativo da Dieta\",\\n  \"objetivo\": \"Hipertrofia/Emagrecimento\",\\n  \"kcal\": 2500,\\n  \"refeicoes\": [\\n    {\\n      \"nome\": \"Café da Manhã\",\\n      \"itens\": [\"Item 1 (ex: 3 ovos mexidos)\", \"Item 2 (ex: 1 fatia de pão integral)\"]\\n    },\\n    {\\n      \"nome\": \"Almoço\",\\n      \"itens\": [\"Item 1\", \"Item 2\"]\\n    }\\n  ]\\n}' }]}] }}"
+              "value": "={{ [{'parts': [{'text': 'Você é o MarombAI, nutricionista esportivo de elite focado em performance. Crie um plano alimentar cientificamente embasado para: \\nNome: ' + $json.body.user.nome + '\\nPeso: ' + $json.body.user.peso + 'kg\\nObjetivo: ' + $json.body.perfil_dieta.objetivo + '\\nEstilo Alimentar: ' + $json.body.perfil_dieta.dieta + '\\nRestrições: ' + ($json.body.perfil_dieta.restricoes.length > 0 ? $json.body.perfil_dieta.restricoes.join(', ') : 'Nenhuma') + '\\n\\nDIRETRIZES TÉCNICAS:\\n1. Proteínas: Mantenha entre 1.8g a 2.2g por kg de peso corporal.\\n2. Hidratação: Calcule o consumo ideal (Peso x 35ml) e inclua no plano.\\n3. Estratégia: Identifique claramente quais refeições são o Pré-Treino e Pós-Treino.\\n4. Macros: Estime os macros totais diários.\\n\\nREGRAS OBRIGATÓRIAS:\\n1. Retorne APENAS um JSON válido. Sem markdown.\\n2. O campo \"kcal\" deve ser um número inteiro.\\n3. A estrutura DEVE ser exatamente esta:\\n{\\n  \"titulo\": \"Nome da Dieta\",\\n  \"objetivo\": \"...\",\\n  \"kcal\": 2500,\\n  \"macros_estimados\": { \"proteinas\": \"160g\", \"carbos\": \"300g\", \"gorduras\": \"70g\" },\\n  \"hidratacao\": \"3.2 Litros/dia\",\\n  \"refeicoes\": [\\n    {\\n      \"nome\": \"Café da Manhã\",\\n      \"horario\": \"08:00\",\\n      \"itens\": [\"...\"],\\n      \"obs\": \"Rico em fibras\"\\n    }\\n  ],\\n  \"ai_insight\": \"Explicação breve do porquê desta estratégia nutricional.\"\\n}' }]}] }}"
             }
           ]
         },
@@ -53,10 +50,7 @@
       "name": "HTTP Request (Gemini)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        680,
-        600
-      ]
+      "position": [680, 600]
     },
     {
       "parameters": {
@@ -66,10 +60,7 @@
       "name": "Formatador JSON Dieta",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        900,
-        600
-      ]
+      "position": [900, 600]
     },
     {
       "parameters": {
@@ -79,10 +70,7 @@
       "name": "Responder ao Backend",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        1120,
-        600
-      ]
+      "position": [1120, 600]
     }
   ],
   "connections": {

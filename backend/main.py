@@ -2,6 +2,7 @@
 import sentry_sdk
 import os
 import time
+import uuid
 from loguru import logger
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
@@ -13,7 +14,7 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 # --- ARQUIVOS LOCAIS ---
 from backend.database import init_db
 from backend.routers import auth
-from config import settings
+from backend.config import settings
 from backend.routers import workouts
 from backend.routers import users
 from backend.routers import admin
@@ -48,24 +49,33 @@ app = FastAPI(
     openapi_url="/openapi.json" if settings.DEBUG else None
 )
 
+# Limpa espaços extras e converte a string do config em lista
+origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",")]
+
 # --- CONFIGURAÇÃO DO CORS ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Process-Time", "X-Request-ID"], # Permite que o frontend leia estes headers
 )
 
 # --- MIDDLEWARE DE PERFORMANCE ---
 @app.middleware("http")
 async def monitorar_tempo_resposta(request: Request, call_next):
+    # Gera um ID único para rastreabilidade (Correlation ID)
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
     start_time = time.perf_counter()
     response = await call_next(request)
     process_time = time.perf_counter() - start_time
-    # Adiciona o tempo no header para inspeção via navegador
+    
+    # Adiciona headers de observabilidade
     response.headers["X-Process-Time"] = str(round(process_time, 4))
-    logger.info(f"⏱️ {request.method} {request.url.path} | Tempo: {process_time:.4f}s")
+    response.headers["X-Request-ID"] = request_id
+    
+    logger.info(f"⏱️ {request.method} {request.url.path} | ID: {request_id} | Tempo: {process_time:.4f}s")
     return response
 
 # --- TRATAMENTO GLOBAL DE EXCEÇÕES ---
@@ -88,7 +98,7 @@ async def integrity_exception_handler(request: Request, exc: IntegrityError):
     
     # Verifica se é erro de e-mail duplicado (comum no cadastro)
     detail = "Conflito de integridade nos dados enviados."
-    if "user.email" in str(exc).lower():
+    if "userauth.email" in str(exc).lower():
         detail = "Este e-mail já está cadastrado no sistema."
 
     return JSONResponse(

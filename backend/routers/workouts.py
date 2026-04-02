@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 from loguru import logger
 
 from backend.database import get_session
-from backend.models import User, WorkoutPlan, WorkoutLog
+from backend.models import UserAuth, WorkoutPlan, WorkoutLog, WorkoutExercise
 from backend.schemas import WorkoutUpdate, WorkoutLogCreate
 from backend.security import get_current_user
 
@@ -30,13 +30,13 @@ TREINOS_TEMPLATES = [
         "id": 2,
         "titulo": "Push (Empurrar) - Hipertrofia",
         "foco": "Peito, Ombro e Tríceps",
-        "intensidade": "Intermediário",
-        "ai_insight": "Foco em exercícios de empurrar com cadência controlada.",
+        "intensidade": "Intermediário/Avançado",
+        "ai_insight": "Sequência biomecânica otimizada: o tríceps isolado entre os supinos permite a recuperação do deltoide.",
         "exercicios": [
             {"nome": "Supino Inclinado Halter", "series": "4x10", "carga": "Moderada", "descanso": "90s"},
-            {"nome": "Desenvolvimento Militar", "series": "3x10", "carga": "Moderada", "descanso": "90s"},
             {"nome": "Tríceps Testa", "series": "3x12", "carga": "Moderada", "descanso": "60s"},
-            {"nome": "Elevação Lateral", "series": "4x15", "carga": "Leve", "descanso": "45s"}
+            {"nome": "Desenvolvimento Militar", "series": "3x10", "carga": "Moderada", "descanso": "90s"},
+            {"nome": "Elevação Lateral", "series": "4x12-15", "carga": "Leve", "descanso": "45s"}
         ]
     },
     {
@@ -52,6 +52,21 @@ TREINOS_TEMPLATES = [
             {"nome": "Crucifixo Inverso", "series": "3x15", "carga": "Leve", "descanso": "45s"}
         ]
     }
+    ,
+    {
+        "id": 4,
+        "titulo": "Lower Body (Membros Inferiores)",
+        "foco": "Quadríceps, Isquiotibiais e Glúteos",
+        "intensidade": "Avançado",
+        "ai_insight": "Treino de alta demanda metabólica. Priorize a amplitude no agachamento.",
+        "exercicios": [
+            {"nome": "Agachamento Livre", "series": "4x8", "carga": "Pesada", "descanso": "120s"},
+            {"nome": "Leg Press 45", "series": "3x12", "carga": "Pesada", "descanso": "90s"},
+            {"nome": "Stiff / RDL", "series": "3x10", "carga": "Moderada", "descanso": "90s"},
+            {"nome": "Cadeira Extensora", "series": "3x15", "carga": "Moderada", "descanso": "60s"},
+            {"nome": "Panturrilha em Pé", "series": "4x20", "carga": "Pesada", "descanso": "45s"}
+        ]
+    }
 ]
 
 @router.get("/templates")
@@ -62,7 +77,7 @@ def listar_templates():
 @router.post("/select-template/{template_id}")
 def selecionar_treino_template(
     template_id: int, 
-    current_user: User = Depends(get_current_user), 
+    current_user: UserAuth = Depends(get_current_user), 
     session: Session = Depends(get_session)
 ):
     """Aplica um treino pré-definido ao perfil do usuário autenticado."""
@@ -76,19 +91,34 @@ def selecionar_treino_template(
         foco=template["foco"],
         nivel_dificuldade=template["intensidade"],
         ai_insight=template["ai_insight"],
-        treino_json=json.dumps(template["exercicios"])
     )
     
     session.add(novo_plano)
+    session.flush() # Para pegar o ID do plano
+
+    # Normalização: Salvando cada exercício na tabela WorkoutExercise
+    for i, ex in enumerate(template["exercicios"]):
+        exercicio_db = WorkoutExercise(
+            workout_plan_id=novo_plano.id,
+            nome=ex["nome"],
+            series=ex["series"],
+            repeticoes=ex["series"].split('x')[-1],
+            carga=ex["carga"],
+            descanso=ex["descanso"],
+            ordem=i
+        )
+        session.add(exercicio_db)
+
     session.commit()
     session.refresh(novo_plano)
+    
     return {"status": "sucesso", "mensagem": "Treino aplicado!", "treino": template}
 
 @router.put("/{workout_id}")
 def atualizar_treino(
     workout_id: int, 
     dados: WorkoutUpdate, 
-    current_user: User = Depends(get_current_user), 
+    current_user: UserAuth = Depends(get_current_user), 
     session: Session = Depends(get_session)
 ):
     """Atualiza um plano de treino existente validando a propriedade."""
@@ -104,17 +134,16 @@ def atualizar_treino(
     if dados.nivel_dificuldade: workout.nivel_dificuldade = dados.nivel_dificuldade
     if dados.ai_insight: workout.ai_insight = dados.ai_insight
     
-    workout.treino_json = json.dumps(dados.exercicios)
+    # Aqui você implementaria a lógica para atualizar ou deletar/recriar os exercícios na tabela WorkoutExercise
     
     session.add(workout)
     session.commit()
-    session.refresh(workout)
-    return {"status": "sucesso", "treino": json.loads(workout.treino_json), "meta": workout}
+    return {"status": "sucesso", "meta": workout}
 
 @router.post("/finish")
 def finalizar_treino(
     dados: WorkoutLogCreate, 
-    current_user: User = Depends(get_current_user), 
+    current_user: UserAuth = Depends(get_current_user), 
     session: Session = Depends(get_session)
 ):
     """Registra a conclusão de uma sessão de treino."""
@@ -134,7 +163,7 @@ def finalizar_treino(
 
 @router.get("/evolution")
 def get_user_evolution(
-    current_user: User = Depends(get_current_user), 
+    current_user: UserAuth = Depends(get_current_user), 
     session: Session = Depends(get_session)
 ):
     """Busca o histórico de treinos do usuário logado."""

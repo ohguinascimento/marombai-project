@@ -3,11 +3,26 @@ from typing import List, Optional
 from datetime import datetime, timezone
 
 # --- Tabela de Usuários ---
-class User(SQLModel, table=True):
+class UserAuth(SQLModel, table=True):
+    """Dados estritamente para Autenticação e Segurança."""
     id: Optional[int] = Field(default=None, primary_key=True)
-    nome: str
     email: str = Field(unique=True, index=True) # Email agora é obrigatório e único
     password: str # Senha simples para o MVP
+    role: str = Field(default="user") # 'user' ou 'admin'
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+    # Relação 1:1 com o Perfil
+    profile: Optional["UserProfile"] = Relationship(back_populates="auth", sa_relationship_kwargs={"uselist": False})
+    # Relações de Histórico
+    workouts: List["WorkoutPlan"] = Relationship(back_populates="auth")
+    diets: List["DietPlan"] = Relationship(back_populates="auth")
+
+class UserProfile(SQLModel, table=True):
+    """Dados Biométricos e Objetivos (Regras de Negócio)."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    # Indexado para buscas rápidas de perfil durante o login
+    user_auth_id: int = Field(foreign_key="userauth.id", unique=True, index=True)
+    nome: str
     idade: int
     peso: float
     altura: int
@@ -17,14 +32,10 @@ class User(SQLModel, table=True):
     objetivo: str
     nivel: str
     dieta: Optional[str] = "onivoro"
-    role: str = Field(default="user") # 'user' ou 'admin'
     lesoes: Optional[str] = "[]" # Salvaremos como string JSON
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
-    # Relação: Um usuário pode ter vários treinos
-    workouts: List["WorkoutPlan"] = Relationship(back_populates="user")
-    # Relação: Um usuário pode ter várias dietas
-    diets: List["DietPlan"] = Relationship(back_populates="user")
+    # Relação inversa com Auth
+    auth: Optional[UserAuth] = Relationship(back_populates="profile")
 
 # --- Tabela de Treinos (Histórico) ---
 class WorkoutPlan(SQLModel, table=True):
@@ -33,18 +44,34 @@ class WorkoutPlan(SQLModel, table=True):
     foco: str
     nivel_dificuldade: str
     ai_insight: str # A explicação científica vai aqui
-    treino_json: str # Vamos salvar o JSON completo dos exercícios aqui por enquanto
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relação: Todo treino pertence a um usuário
-    user_id: Optional[int] = Field(default=None, foreign_key="user.id")
-    user: Optional[User] = Relationship(back_populates="workouts")
+    # Indexado conforme sugestão do DBA para performance em escala
+    user_id: Optional[int] = Field(default=None, foreign_key="userauth.id", index=True)
+    auth: Optional[UserAuth] = Relationship(back_populates="workouts")
+
+    # Relação com os exercícios (Normalização)
+    exercises: List["WorkoutExercise"] = Relationship(back_populates="workout_plan", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+
+class WorkoutExercise(SQLModel, table=True):
+    """Tabela normalizada de exercícios de um plano."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    workout_plan_id: int = Field(foreign_key="workoutplan.id", index=True)
+    nome: str
+    series: str
+    repeticoes: str = "10"
+    carga: str = "Moderada"
+    descanso: str = "60s"
+    ordem: int = 0
+
+    workout_plan: Optional[WorkoutPlan] = Relationship(back_populates="exercises")
 
 # --- Tabela de Logs (Treinos Realizados) ---
 class WorkoutLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id")
-    workout_plan_id: int = Field(foreign_key="workoutplan.id")
+    user_id: int = Field(foreign_key="userauth.id", index=True)
+    workout_plan_id: int = Field(foreign_key="workoutplan.id", index=True)
     data_realizacao: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     duracao_minutos: Optional[int] = None
     esforco_percebido: Optional[int] = None # 1 a 10
@@ -69,5 +96,5 @@ class DietPlan(SQLModel, table=True):
     restricoes: str  # JSON string com restrições/alergias
     dieta_json: str  # JSON completo da dieta
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    user_id: Optional[int] = Field(default=None, foreign_key="user.id")
-    user: Optional[User] = Relationship(back_populates="diets")
+    user_id: Optional[int] = Field(default=None, foreign_key="userauth.id", index=True)
+    auth: Optional[UserAuth] = Relationship(back_populates="diets")
