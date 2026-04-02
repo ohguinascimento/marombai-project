@@ -59,6 +59,28 @@ def listar_templates():
     """Retorna a biblioteca de treinos pré-definidos."""
     return TREINOS_TEMPLATES
 
+@router.post("/cadastrar-treino", status_code=status.HTTP_201_CREATED)
+def cadastrar_treino_direto(
+    dados: WorkoutUpdate, 
+    current_user: User = Depends(get_current_user), 
+    session: Session = Depends(get_session)
+):
+    """Cadastra um treino enviado diretamente pelo frontend sem uso de IA."""
+    novo_plano = WorkoutPlan(
+        user_id=current_user.id,
+        titulo=dados.titulo,
+        foco=dados.foco,
+        nivel_dificuldade=dados.nivel_dificuldade,
+        ai_insight="Treino montado manualmente pelo usuário.",
+        treino_json=json.dumps(dados.exercicios)
+    )
+    
+    session.add(novo_plano)
+    session.commit()
+    session.refresh(novo_plano)
+    
+    return {"status": "sucesso", "id": novo_plano.id, "treino": dados.exercicios}
+
 @router.post("/select-template/{template_id}")
 def selecionar_treino_template(
     template_id: int, 

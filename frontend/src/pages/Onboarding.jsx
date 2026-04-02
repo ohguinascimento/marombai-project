@@ -101,31 +101,44 @@ export default function Onboarding() {
       exercicios: formData.exerciciosSelecionados
     };
 
+    // Prepara o payload específico para a criação do plano de treino
+    const treinoPayload = {
+      titulo: `Treino de ${payload.nome}`,
+      foco: payload.objetivo,
+      nivel_dificuldade: payload.nivel,
+      exercicios: payload.exercicios
+    };
+
     console.log("🚀 Enviando payload formatado:", payload);
 
     try {
       // Cria uma promessa de delay mínimo de 1.5 segundos para UX
       const minDelay = new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Executa a requisição e o delay em paralelo
-      const [res] = await Promise.all([
-        api.post('/gerar-treino', payload),
+      // --- PASSO 1: REGISTRAR O USUÁRIO ---
+      const registerRes = await api.post('/auth/register', payload);
+      const { access_token, user } = registerRes.data;
+
+      // Salva o token para que as próximas chamadas (incluindo o treino) funcionem
+      localStorage.setItem('marombai_token', access_token);
+      localStorage.setItem('marombai_user_id', user.id);
+      localStorage.setItem('marombai_user_nome', user.nome);
+
+      // --- PASSO 2: CADASTRAR O TREINO ---
+      const [workoutRes] = await Promise.all([
+        api.post('/workout/cadastrar-treino', treinoPayload),
         minDelay
       ]);
 
-      const data = res.data;
-      if (data.status === 'sucesso') {
-        console.log("✅ Sucesso! Resposta:", data);
-
-        // Salva o ID no localStorage para persistência
-        localStorage.setItem('marombai_user_id', data.user_id);
-        localStorage.setItem('marombai_user_nome', payload.nome);
-
+      const data = workoutRes.data;
+      if (data.status === 'sucesso' || workoutRes.status === 201) {
+        console.log("✅ Registro e Treino concluídos!");
+        
         // Navega para o Dashboard levando o treino
         navigate('/dashboard', { state: { 
           treinoData: data.treino, 
-          treinoId: data.treino_id,
-          userId: data.user_id, 
+          treinoId: data.id, 
+          userId: user.id, 
           userProfile: payload 
         } });
       } else {

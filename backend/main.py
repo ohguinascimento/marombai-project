@@ -16,7 +16,6 @@ from backend.routers import auth
 from backend.routers import workouts
 from backend.routers import users
 from backend.routers import admin
-from backend.routers import generation
 
 # --- CONFIGURAÇÃO SENTRY ---
 SENTRY_DSN = os.getenv("SENTRY_DSN")
@@ -100,7 +99,6 @@ app.include_router(auth.router, prefix="/auth", tags=["Autenticação"])
 app.include_router(workouts.router, prefix="/workout", tags=["Treino"])
 app.include_router(users.router, prefix="/user", tags=["Usuário"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
-app.include_router(generation.router, tags=["IA"])
 
 @app.get("/", tags=["Geral"])
 def read_root():

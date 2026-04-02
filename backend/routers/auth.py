@@ -36,6 +36,37 @@ async def send_sendgrid_email(to_email: str, subject: str, html_content: str):
         response = await client.post(url, json=payload, headers=headers)
         return response.status_code == 202
 
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+def register(user_data: dict, session: Session = Depends(get_session)):
+    """Cria um novo usuário com senha criptografada e retorna o token de acesso."""
+    email_normalizado = user_data.get("email").strip().lower()
+    
+    # Verifica se o usuário já existe
+    existing_user = session.exec(select(User).where(User.email == email_normalizado)).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Este e-mail já está cadastrado.")
+
+    # Cria o novo usuário HASHEANDO a senha
+    new_user = User(
+        email=email_normalizado,
+        nome=user_data.get("nome"),
+        password=SecurityManager.hash_password(user_data.get("password")),
+        role="user"
+    )
+    
+    session.add(new_user)
+    session.commit()
+    session.refresh(new_user)
+
+    # Gera o token para o usuário já sair logado do onboarding
+    access_token = SecurityManager.create_access_token(data={"sub": str(new_user.id)})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {"id": new_user.id, "nome": new_user.nome, "role": new_user.role}
+    }
+
 @router.post("/login", response_model=Any)
 def login(dados: LoginRequest, session: Session = Depends(get_session)):
     email_normalizado = dados.email.strip().lower()
